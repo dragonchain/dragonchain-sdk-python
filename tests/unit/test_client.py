@@ -635,41 +635,42 @@ class TestClientMehods(unittest.TestCase):
 
     def test_create_bitcoin_transaction_throws_correctly(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.create_bitcoin_transaction, [], 1.0, "data")
         self.assertRaises(TypeError, self.client.create_bitcoin_transaction, "BTC_MAINNET", [], "data")
-        self.assertRaises(TypeError, self.client.create_bitcoin_transaction, "BTC_MAINNET", 1.0, [])
-        self.assertRaises(TypeError, self.client.create_bitcoin_transaction, "BTC_MAINNET", 1.0, "data", [])
-        self.assertRaises(TypeError, self.client.create_bitcoin_transaction, "BTC_MAINNET", 1.0, "data", outputs="FAIL")
-        self.assertRaises(ValueError, self.client.create_bitcoin_transaction, "FAIL", 1.0, "data")
+        self.assertRaises(TypeError, self.client.create_bitcoin_transaction, "BTC_MAINNET", 1, [])
+        self.assertRaises(TypeError, self.client.create_bitcoin_transaction, "BTC_MAINNET", 1, "data", [])
+        self.assertRaises(TypeError, self.client.create_bitcoin_transaction, "BTC_MAINNET", 1, "data", outputs="FAIL")
+        self.assertRaises(ValueError, self.client.create_bitcoin_transaction, "FAIL", 1, "data")
 
     def test_create_bitcoin_transaction(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.client.create_bitcoin_transaction("BTC_MAINNET", 1.1, data="0x0", outputs=["banana"], change_address="apples")
+        self.client.create_bitcoin_transaction("BTC_MAINNET", 1, data="0x0", outputs=["banana"], change_address="apples")
         self.client.request.post.assert_called_once_with(
             "/v1/public-blockchain-transaction",
-            body={"network": "BTC_MAINNET", "transaction": {"fee": 1.1, "data": "0x0", "outputs": ["banana"], "change": "apples"}},
+            body={"network": "BTC_MAINNET", "transaction": {"version": "1", "fee": 1, "data": "0x0", "outputs": ["banana"], "change": "apples"}},
         )
 
     def test_create_bitcoin_transaction_default_only(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.create_bitcoin_transaction("BTC_MAINNET")
-        self.client.request.post.assert_called_once_with("/v1/public-blockchain-transaction", body={"network": "BTC_MAINNET", "transaction": {}})
+        self.client.request.post.assert_called_once_with(
+            "/v1/public-blockchain-transaction", body={"network": "BTC_MAINNET", "transaction": {"version": "1"}}
+        )
 
     def test_create_ethereum_transaction_throws_correctly(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.create_ethereum_transaction, [], "to ", "value")
         self.assertRaises(TypeError, self.client.create_ethereum_transaction, "ETH_MAINNET", [], "value")
         self.assertRaises(TypeError, self.client.create_ethereum_transaction, "ETH_MAINNET", "to", [])
         self.assertRaises(TypeError, self.client.create_ethereum_transaction, "ETH_MAINNET", "to", "value", [])
         self.assertRaises(TypeError, self.client.create_ethereum_transaction, "ETH_MAINNET", "to", "value", "data", [])
         self.assertRaises(TypeError, self.client.create_ethereum_transaction, "ETH_MAINNET", "to", "value", "data", "gas_price", [])
+        self.assertRaises(ValueError, self.client.create_ethereum_transaction, "NEO_MAINNET", "flim_flam", "potato")
 
     def test_create_ethereum_transaction(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.create_ethereum_transaction("ETH_ROPSTEN", "0x0000000000000000000000000000000000000000", "0x0")
         self.client.request.post.assert_called_once_with(
             "/v1/public-blockchain-transaction",
-            body={"network": "ETH_ROPSTEN", "transaction": {"to": "0x0000000000000000000000000000000000000000", "value": "0x0"}},
+            body={"network": "ETH_ROPSTEN", "transaction": {"version": "1", "to": "0x0000000000000000000000000000000000000000", "value": "0x0"}},
         )
 
     def test_create_ethereum_transaction_with_data(self, mock_creds, mock_request):
@@ -677,7 +678,10 @@ class TestClientMehods(unittest.TestCase):
         self.client.create_ethereum_transaction("ETH_ROPSTEN", "0x0000000000000000000000000000000000000000", "0x0", data="Banana")
         self.client.request.post.assert_called_once_with(
             "/v1/public-blockchain-transaction",
-            body={"network": "ETH_ROPSTEN", "transaction": {"to": "0x0000000000000000000000000000000000000000", "value": "0x0", "data": "Banana"}},
+            body={
+                "network": "ETH_ROPSTEN",
+                "transaction": {"version": "1", "to": "0x0000000000000000000000000000000000000000", "value": "0x0", "data": "Banana"},
+            },
         )
 
     def test_create_ethereum_transaction_with_gas_price(self, mock_creds, mock_request):
@@ -687,7 +691,13 @@ class TestClientMehods(unittest.TestCase):
             "/v1/public-blockchain-transaction",
             body={
                 "network": "ETH_ROPSTEN",
-                "transaction": {"to": "0x0000000000000000000000000000000000000000", "value": "0x0", "data": "Banana", "gasPrice": "1"},
+                "transaction": {
+                    "version": "1",
+                    "to": "0x0000000000000000000000000000000000000000",
+                    "value": "0x0",
+                    "data": "Banana",
+                    "gasPrice": "1",
+                },
             },
         )
 
@@ -700,7 +710,14 @@ class TestClientMehods(unittest.TestCase):
             "/v1/public-blockchain-transaction",
             body={
                 "network": "ETH_ROPSTEN",
-                "transaction": {"to": "0x0000000000000000000000000000000000000000", "value": "0x0", "data": "Banana", "gasPrice": "1", "gas": "2"},
+                "transaction": {
+                    "version": "1",
+                    "to": "0x0000000000000000000000000000000000000000",
+                    "value": "0x0",
+                    "data": "Banana",
+                    "gasPrice": "1",
+                    "gas": "2",
+                },
             },
         )
 
@@ -754,14 +771,169 @@ class TestClientMehods(unittest.TestCase):
         self.client.update_api_key(key_id="id", nickname="newName")
         self.client.request.put.assert_called_once_with("/v1/api-key/id", {"nickname": "newName"})
 
-    def test_create_ethereum_transaction_throws_value_error_on_invalid_network(self, mock_creds, mock_request):
+    def test_get_default_interchain_calls_correctly(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.assertRaises(ValueError, self.client.create_ethereum_transaction, "NEO_MAINNET", "flim_flam", "potato")
+        self.client.get_default_interchain_network()
+        self.client.request.get.assert_called_once_with("/v1/interchains/default")
 
-    def test_create_ethereum_transaction_throws_type_error_on_invalid_network_type(self, mock_creds, mock_request):
+    def test_set_default_interchain_throws_correctly(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.create_ethereum_transaction, b"ETH_MAINNET", "flim_flam", "apples")
+        self.assertRaises(TypeError, self.client.set_default_interchain_network, 1, "a")
+        self.assertRaises(TypeError, self.client.set_default_interchain_network, "a", 1)
 
-    def test_create_ethereum_transaction_throws_type_error_on_invalid_transaction_type(self, mock_creds, mock_request):
+    def test_set_default_interchain_calls_correctly(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.assertRaises(ValueError, self.client.create_ethereum_transaction, "BANANA", "invalid", "banana")
+        self.client.set_default_interchain_network("a", "b")
+        self.client.request.post.assert_called_once_with("/v1/interchains/default", {"version": "1", "blockchain": "a", "name": "b"})
+
+    def test_list_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.list_interchain_networks, 1)
+
+    def test_list_interchain_calls_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.list_interchain_networks("a")
+        self.client.request.get.assert_called_once_with("/v1/interchains/a")
+
+    def test_delete_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.delete_interchain_network, 1, "a")
+        self.assertRaises(TypeError, self.client.delete_interchain_network, "a", 1)
+
+    def test_delete_interchain_calls_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.delete_interchain_network("a", "b")
+        self.client.request.delete.assert_called_once_with("/v1/interchains/a/b")
+
+    def test_get_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.get_interchain_network, 1, "a")
+        self.assertRaises(TypeError, self.client.get_interchain_network, "a", 1)
+
+    def test_get_interchain_calls_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.get_interchain_network("a", "b")
+        self.client.request.get.assert_called_once_with("/v1/interchains/a/b")
+
+    def test_create_bitcoin_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.create_bitcoin_interchain, 1)
+        self.assertRaises(TypeError, self.client.create_bitcoin_interchain, "a", 1)
+        self.assertRaises(TypeError, self.client.create_bitcoin_interchain, "a", True, 1)
+        self.assertRaises(TypeError, self.client.create_bitcoin_interchain, "a", True, "a", 1)
+        self.assertRaises(TypeError, self.client.create_bitcoin_interchain, "a", True, "a", "a", 1)
+        self.assertRaises(TypeError, self.client.create_bitcoin_interchain, "a", True, "a", "a", "a", 1)
+
+    def test_create_bitcoin_interchain_calls_correctly_with_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.create_bitcoin_interchain("name", True, "key", "address", "auth", False)
+        self.client.request.post.assert_called_once_with(
+            "/v1/interchains/bitcoin",
+            {
+                "version": "1",
+                "name": "name",
+                "testnet": True,
+                "private_key": "key",
+                "rpc_address": "address",
+                "rpc_authorization": "auth",
+                "utxo_scan": False,
+            },
+        )
+
+    def test_create_bitcoin_interchain_calls_correctly_without_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.create_bitcoin_interchain("name")
+        self.client.request.post.assert_called_once_with("/v1/interchains/bitcoin", {"version": "1", "name": "name"})
+
+    def test_update_bitcoin_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.update_bitcoin_interchain, 1)
+        self.assertRaises(TypeError, self.client.update_bitcoin_interchain, "a", 1)
+        self.assertRaises(TypeError, self.client.update_bitcoin_interchain, "a", True, 1)
+        self.assertRaises(TypeError, self.client.update_bitcoin_interchain, "a", True, "a", 1)
+        self.assertRaises(TypeError, self.client.update_bitcoin_interchain, "a", True, "a", "a", 1)
+        self.assertRaises(TypeError, self.client.update_bitcoin_interchain, "a", True, "a", "a", "a", 1)
+
+    def test_update_bitcoin_interchain_calls_correctly_with_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.update_bitcoin_interchain("name", True, "key", "address", "auth", False)
+        self.client.request.patch.assert_called_once_with(
+            "/v1/interchains/bitcoin/name",
+            {"version": "1", "testnet": True, "private_key": "key", "rpc_address": "address", "rpc_authorization": "auth", "utxo_scan": False},
+        )
+
+    def test_update_bitcoin_interchain_calls_correctly_without_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.update_bitcoin_interchain("name")
+        self.client.request.patch.assert_called_once_with("/v1/interchains/bitcoin/name", {"version": "1"})
+
+    def test_sign_bitcoin_transaction_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.sign_bitcoin_transaction, 1)
+
+    def test_sign_bitcoin_transaction_calls_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.sign_bitcoin_transaction("name", 1, "data", "change", [{"to": "address", "value": 9.234}])
+        self.client.request.post.assert_called_once_with(
+            "/v1/interchains/bitcoin/name/transaction",
+            {"version": "1", "outputs": [{"to": "address", "value": 9.234}], "fee": 1, "data": "data", "change": "change"},
+        )
+
+    def test_create_ethereum_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.create_ethereum_interchain, 1)
+        self.assertRaises(TypeError, self.client.create_ethereum_interchain, "a", 1)
+        self.assertRaises(TypeError, self.client.create_ethereum_interchain, "a", "a", 1)
+        self.assertRaises(TypeError, self.client.create_ethereum_interchain, "a", "a", "a", "a")
+
+    def test_create_ethereum_interchain_calls_correctly_with_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.create_ethereum_interchain("name", "key", "address", 1)
+        self.client.request.post.assert_called_once_with(
+            "/v1/interchains/ethereum", {"version": "1", "name": "name", "private_key": "key", "rpc_address": "address", "chain_id": 1}
+        )
+
+    def test_create_ethereum_interchain_calls_correctly_without_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.create_ethereum_interchain("name")
+        self.client.request.post.assert_called_once_with("/v1/interchains/ethereum", {"version": "1", "name": "name"})
+
+    def test_update_ethereum_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.update_ethereum_interchain, 1)
+        self.assertRaises(TypeError, self.client.update_ethereum_interchain, "a", 1)
+        self.assertRaises(TypeError, self.client.update_ethereum_interchain, "a", "a", 1)
+        self.assertRaises(TypeError, self.client.update_ethereum_interchain, "a", "a", "a", "a")
+
+    def test_update_ethereum_interchain_calls_correctly_with_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.update_ethereum_interchain("name", "key", "address", 1)
+        self.client.request.patch.assert_called_once_with(
+            "/v1/interchains/ethereum/name", {"version": "1", "private_key": "key", "rpc_address": "address", "chain_id": 1}
+        )
+
+    def test_update_ethereum_interchain_calls_correctly_without_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.update_ethereum_interchain("name")
+        self.client.request.patch.assert_called_once_with("/v1/interchains/ethereum/name", {"version": "1"})
+
+    def test_sign_ethereum_transaction_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.sign_ethereum_transaction, 1, "to", "value")
+        self.assertRaises(TypeError, self.client.sign_ethereum_transaction, "name", "to", "value", nonce=1)
+
+    def test_sign_ethereum_transaction_calls_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.sign_ethereum_transaction("name", "0xaddress", "0xvalue", "0xdata", "0xgasprice", "0xgaslimit", "0xnonce")
+        self.client.request.post.assert_called_once_with(
+            "/v1/interchains/ethereum/name/transaction",
+            {
+                "version": "1",
+                "to": "0xaddress",
+                "value": "0xvalue",
+                "data": "0xdata",
+                "gasPrice": "0xgasprice",
+                "gas": "0xgaslimit",
+                "nonce": "0xnonce",
+            },
+        )

@@ -101,7 +101,7 @@ class Request(object):
             parse_response (bool, optional): Decides whether the return from the chain should be parsed as json (default True)
 
         Returns:
-            Returns the response of the GET operation.
+            The response of the GET operation.
         """
         return self._make_request(http_verb="GET", path=path, verify=self.verify, parse_response=parse_response)
 
@@ -114,7 +114,7 @@ class Request(object):
             parse_response (bool, optional): Decides whether the return from the chain should be parsed as json (default True)
 
         Returns:
-            Returns the response of the POST operation.
+            The response of the POST operation.
         """
         if additional_headers is None:
             additional_headers = {}
@@ -131,9 +131,22 @@ class Request(object):
             parse_response (bool, optional): Decides whether the return from the chain should be parsed as json (default True)
 
         Returns:
-            Returns the response of the PUT operation.
+            The response of the PUT operation.
         """
         return self._make_request(http_verb="PUT", path=path, verify=self.verify, json_content=body, parse_response=parse_response)
+
+    def patch(self, path: str, body: Any, parse_response: bool = True) -> "request_response":
+        """Make a PATCH request to a chain
+
+        Args:
+            path (str): Path of the request (including any path query parameters)
+            body (JSON-encodable): Object representing the JSON to patch.
+            parse_response (bool, optional): Decides whether the return from the chain sholud be parsed as json (default True)
+
+        Returns:
+            The response of the PATCH operation
+        """
+        return self._make_request(http_verb="PATCH", path=path, verify=self.verify, json_content=body, parse_response=parse_response)
 
     def delete(self, path: str, parsed_response: bool = True) -> "request_response":
         """Make a DELETE request to the chain
@@ -143,7 +156,7 @@ class Request(object):
             parse_response (bool, optional): Decides whether the return from the chain should be parsed as json (default True)
 
         Returns:
-            Returns the response of the DELETE operation
+            The response of the DELETE operation
         """
         return self._make_request(http_verb="DELETE", path=path, verify=self.verify, parse_response=parsed_response)
 
@@ -337,7 +350,7 @@ class Request(object):
         try:
             return_dict["status"] = r.status_code
             logger.debug("Response status code: {}".format(r.status_code))
-            return_dict["ok"] = True if r.status_code // 100 == 2 else False
+            return_dict["ok"] = r.status_code // 100 == 2
             return_dict["response"] = r.json() if parse_response else r.text
             return cast("request_response", return_dict)
         except Exception as e:

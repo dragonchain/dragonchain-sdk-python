@@ -82,7 +82,7 @@ async def _make_request(
                 return_dict = {}
                 return_dict["status"] = r.status
                 logger.debug("Response status code: {}".format(r.status))
-                return_dict["ok"] = True if r.status // 100 == 2 else False
+                return_dict["ok"] = r.status // 100 == 2
                 return_dict["response"] = await r.json() if parse_response else await r.text()
                 return cast("request_response", return_dict)
             except Exception as e:

@@ -110,10 +110,59 @@ created_ethereum_transaction_schema = {
     "additionalProperties": False,
 }
 
+created_bitcoin_transaction_schema = {
+    "type": "object",
+    "properties": {"signed": {"type": "string", "pattern": "^[0-9a-fA-f]+$"}},
+    "required": ["signed"],
+    "additionalProperties": False,
+}
+
 create_transaction_schema = {
     "type": "object",
     "properties": {"transaction_id": {"type": "string", "pattern": _uuidv4_regex}},
     "required": ["transaction_id"],
+    "additionalProperties": False,
+}
+
+ethereum_interchain_at_rest_schema = {
+    "type": "object",
+    "properties": {
+        "version": {"type": "string", "enum": ["1"]},
+        "blockchain": {"type": "string", "enum": ["ethereum"]},
+        "name": {"type": "string"},
+        "rpc_address": {"type": "string"},
+        "chain_id": {"type": "integer"},
+        "address": {"type": "string", "pattern": _ethereum_address_regex},
+    },
+    "required": ["version", "blockchain", "name", "rpc_address", "chain_id", "address"],
+    "additionalProperties": False,
+}
+
+ethereum_interchain_list_schema = {
+    "type": "object",
+    "properties": {"interchains": {"type": "array", "items": ethereum_interchain_at_rest_schema}},
+    "required": ["interchains"],
+    "additionalProperties": False,
+}
+
+bitcoin_interchain_at_rest_schema = {
+    "type": "object",
+    "properties": {
+        "version": {"type": "string", "enum": ["1"]},
+        "blockchain": {"type": "string", "enum": ["bitcoin"]},
+        "name": {"type": "string"},
+        "rpc_address": {"type": "string"},
+        "testnet": {"type": "boolean"},
+        "address": {"type": "string"},
+    },
+    "required": ["version", "blockchain", "name", "rpc_address", "testnet", "address"],
+    "additionalProperties": False,
+}
+
+bitcoin_interchain_list_schema = {
+    "type": "object",
+    "properties": {"interchains": {"type": "array", "items": bitcoin_interchain_at_rest_schema}},
+    "required": ["interchains"],
     "additionalProperties": False,
 }
 

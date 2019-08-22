@@ -1,6 +1,26 @@
 Changelog
 =========
 
+3.3.0
+-----
+
+Features:
+  * Add deprecation warnings for ``create_bitcoin_transaction``,
+    ``create_ethereum_transaction`` and ``get_public_blockchain_addresses``
+  * Add support for new interchain management endpoints
+
+    * ``create_bitcoin_interchain``
+    * ``update_bitcoin_interchain``
+    * ``sign_bitcoin_transaction``
+    * ``create_ethereum_interchain``
+    * ``update_ethereum_interchain``
+    * ``sign_ethereum_transaction``
+    * ``get_interchain_network``
+    * ``delete_interchain_network``
+    * ``list_interchain_networks``
+    * ``set_default_interchain_network``
+    * ``get_default_interchain_network``
+
 3.2.0
 -----
 

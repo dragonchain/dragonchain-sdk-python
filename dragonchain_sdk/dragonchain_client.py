@@ -538,117 +538,6 @@ class Client(object):
             return self.request.get("/v1/list/{}/{}/".format(smart_contract_id, prefix_key))
         return self.request.get("/v1/list/{}/".format(smart_contract_id))
 
-    def create_bitcoin_transaction(
-        self,
-        network: str,
-        satoshis_per_byte: Optional[float] = None,
-        data: Optional[str] = None,
-        change_address: Optional[str] = None,
-        outputs: Optional[List[Dict[str, Any]]] = None,
-    ) -> "request_response":
-        """Create and sign a bitcoin transaction using your chain's private keys
-
-        Args:
-            network (str): network to create transaction for. Only valid values are ``BTC_MAINNET`` and ``BTC_TESTNET3``
-            satoshis_per_byte (optional, int): fee to pay in satoshis/byte. If not supplied, it will be estimated for you.
-            data (optional, str): string to embed in the transaction as null-data output type
-            change_address (optional, str): address to send change to. If not supplied, it will default to the address you are sending from
-            outputs (optional, list): (list of {'to': str, 'value': float})
-                If no options are provided for BTC, a transaction will be created that consolidates your UTXOs
-
-        Raises:
-            TypeError: with bad parameter types
-            ValueError: with bad parameter values
-
-        Returns:
-            The built and signed transaction
-        """
-        valid_networks = ["BTC_MAINNET", "BTC_TESTNET3"]
-        if not isinstance(network, str):
-            raise TypeError('Parameter "network" must be of type str.')
-        if satoshis_per_byte is not None and not isinstance(satoshis_per_byte, float):
-            raise TypeError('Parameter "satoshis_per_byte" must be of type float.')
-        if data is not None and not isinstance(data, str):
-            raise TypeError('Parameter "data" must be of type str.')
-        if change_address is not None and not isinstance(change_address, str):
-            raise TypeError('Parameter "change_address" must be of type str.')
-        if outputs is not None and not isinstance(outputs, list):
-            raise TypeError('Parameter "outputs" must be of type list.')
-        if network not in valid_networks:
-            raise ValueError('Parameter "network" must be one of {}.'.format(valid_networks))
-
-        body = cast(Dict[str, Any], {"network": network, "transaction": {}})
-
-        if outputs:
-            body["transaction"]["outputs"] = outputs
-        if satoshis_per_byte:
-            body["transaction"]["fee"] = satoshis_per_byte
-        if data:
-            body["transaction"]["data"] = data
-        if change_address:
-            body["transaction"]["change"] = change_address
-        return self.request.post("/v1/public-blockchain-transaction", body=body)
-
-    def create_ethereum_transaction(
-        self, network: str, to: str, value: str, data: Optional[str] = None, gas_price: Optional[str] = None, gas: Optional[str] = None
-    ) -> "request_response":
-        """Create and sign a public ethereum transaction using your chain's private keys
-
-        Args:
-            network (str): network to create transaction for. Only valid values are:
-                ETH_MAINNET
-                ETH_ROPSTEN
-                ETC_MAINNET
-                ETC_MORDEN
-
-                to (hex str): the address to send to
-                value (hex str): value in wei to send
-                data (optional, hex str): data to publish in the transaction
-                gas_price (optional, str): gas price in gwei to pay, if not supplied it will be estimated for you.
-                gas (optional, str): maximum amount of gas allowed (gasLimit), if not supplied it will be estimated for you.
-
-        Raises:
-            TypeError: with bad parameter types
-            ValueError: with bad parameter values
-
-        Returns:
-            The built and signed transaction
-        """
-        valid_networks = ["ETH_MAINNET", "ETH_ROPSTEN", "ETC_MAINNET", "ETC_MORDEN"]
-        if not isinstance(network, str):
-            raise TypeError('Parameter "network" must be of type str.')
-        if network not in valid_networks:
-            raise ValueError('Parameter "network" must be one of {}.'.format(valid_networks))
-        if not isinstance(to, str):
-            raise TypeError('Parameter "to" must be of type str.')
-        if not isinstance(value, str):
-            raise TypeError('Parameter "value" must be of type str.')
-        if data is not None and not isinstance(data, str):
-            raise TypeError('Parameter "data" must be of type str.')
-        if gas_price is not None and not isinstance(gas_price, str):
-            raise TypeError('Parameter "gas_price" must be of type str.')
-        if gas is not None and not isinstance(gas, str):
-            raise TypeError('Parameter "gas" must be of type str.')
-
-        body = cast(Dict[str, Any], {"network": network, "transaction": {"to": to, "value": value}})
-
-        if data:
-            body["transaction"]["data"] = data
-        if gas_price:
-            body["transaction"]["gasPrice"] = gas_price
-        if gas:
-            body["transaction"]["gas"] = gas
-
-        return self.request.post("/v1/public-blockchain-transaction", body=body)
-
-    def get_public_blockchain_addresses(self) -> "request_response":
-        """Get interchain addresses for this Dragonchain node (L1 and L5 only)
-
-        Returns:
-            Dictionary containing addresses
-        """
-        return self.request.get("/v1/public-blockchain-address")
-
     def get_transaction_type(self, transaction_type: str) -> "request_response":
         """Gets information on a registered transaction type
 
@@ -750,6 +639,406 @@ class Client(object):
             raise TypeError('Parameter "transaction_type" must be of type str.')
         return self.request.delete("/v1/transaction-type/{}".format(transaction_type))
 
+    def create_bitcoin_interchain(
+        self,
+        name: str,
+        testnet: Optional[bool] = None,
+        private_key: Optional[str] = None,
+        rpc_address: Optional[str] = None,
+        rpc_authorization: Optional[str] = None,
+        utxo_scan: Optional[bool] = None,
+    ) -> "request_response":
+        """Create (or overwrite) a bitcoin wallet/network for interchain use
+
+        Args:
+            name (str): The name to use for this network. Will overwrite if providing a name that already exists
+            testnet (bool): Whether or not this is a testnet wallet/address (not required if providing private_key as WIF)
+            private_key (str, optional): The base64 encoded private key, or WIF for the desired wallet. Will generate randomly if not provided
+            rpc_address (str, optional): The endpoint of the bitcoin core RPC node to use (i.e. http://my-node:8332)
+            rpc_authorization (str, optional): The base64-encoded username:password for the rpc node. For example, user: a pass: b would be 'YTpi' (base64("a:b"))
+            utxo_scan (bool, optional): Whether or not to force a utxo-rescan for the address.
+                If using a private key for an existing wallet with funds, this must be True to use its existing funds
+
+        Raises:
+            TypeError: with bad parameter values
+
+        Returns:
+            The created interchain network
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if testnet is not None and not isinstance(testnet, bool):
+            raise TypeError('Parameter "testnet" must be of type bool.')
+        if private_key is not None and not isinstance(private_key, str):
+            raise TypeError('Parameter "private_key" must be of type str.')
+        if rpc_address is not None and not isinstance(rpc_address, str):
+            raise TypeError('Parameter "rpc_address" must be of type str.')
+        if rpc_authorization is not None and not isinstance(rpc_authorization, str):
+            raise TypeError('Parameter "rpc_authorization" must be of type str.')
+        if utxo_scan is not None and not isinstance(utxo_scan, bool):
+            raise TypeError('Parameter "utxo_scan" must be of type bool.')
+        body = cast(Dict[str, Any], {"version": "1", "name": name})
+        if testnet is not None:
+            body["testnet"] = testnet
+        if utxo_scan is not None:
+            body["utxo_scan"] = utxo_scan
+        if private_key:
+            body["private_key"] = private_key
+        if rpc_address:
+            body["rpc_address"] = rpc_address
+        if rpc_authorization:
+            body["rpc_authorization"] = rpc_authorization
+        return self.request.post("/v1/interchains/bitcoin", body)
+
+    def update_bitcoin_interchain(
+        self,
+        name: str,
+        testnet: Optional[bool] = None,
+        private_key: Optional[str] = None,
+        rpc_address: Optional[str] = None,
+        rpc_authorization: Optional[str] = None,
+        utxo_scan: Optional[bool] = None,
+    ) -> "request_response":
+        """Update an existing bitcoin wallet/network for interchain use. Will only update the provided fields
+
+        Args:
+            name (str): The name of the network to update
+            testnet (bool): Whether or not this is a testnet wallet/address (not required if providing private_key as WIF)
+            private_key (str, optional): The base64 encoded private key, or WIF for the desired wallet
+            rpc_address (str, optional): The endpoint of the bitcoin core RPC node to use (i.e. http://my-node:8332)
+            rpc_authorization (str, optional): The base64-encoded username:password for the rpc node. For example, user: a pass: b would be 'YTpi' (base64("a:b"))
+            utxo_scan (bool, optional): Whether or not to force a utxo-rescan for the address.
+                If using a new private key for an existing wallet with funds, this must be True to use its existing funds
+
+        Raises:
+            TypeError: with bad parameter values
+
+        Returns:
+            The updated bitcoin interchain network
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if testnet is not None and not isinstance(testnet, bool):
+            raise TypeError('Parameter "testnet" must be of type bool.')
+        if private_key is not None and not isinstance(private_key, str):
+            raise TypeError('Parameter "private_key" must be of type str.')
+        if rpc_address is not None and not isinstance(rpc_address, str):
+            raise TypeError('Parameter "rpc_address" must be of type str.')
+        if rpc_authorization is not None and not isinstance(rpc_authorization, str):
+            raise TypeError('Parameter "rpc_authorization" must be of type str.')
+        if utxo_scan is not None and not isinstance(utxo_scan, bool):
+            raise TypeError('Parameter "utxo_scan" must be of type bool.')
+        body = cast(Dict[str, Any], {"version": "1"})
+        if testnet is not None:
+            body["testnet"] = testnet
+        if utxo_scan is not None:
+            body["utxo_scan"] = utxo_scan
+        if private_key:
+            body["private_key"] = private_key
+        if rpc_address:
+            body["rpc_address"] = rpc_address
+        if rpc_authorization:
+            body["rpc_authorization"] = rpc_authorization
+        return self.request.patch("/v1/interchains/bitcoin/{}".format(name), body)
+
+    def sign_bitcoin_transaction(
+        self,
+        name: str,
+        satoshis_per_byte: Optional[int] = None,
+        data: Optional[str] = None,
+        change_address: Optional[str] = None,
+        outputs: Optional[List[Dict[str, Any]]] = None,
+    ) -> "request_response":
+        """Create and sign a bitcoin transaction using your chain's interchain network
+
+        Args:
+            name (str): name of the bitcoin network to use for signing
+            satoshis_per_byte (int, optional): fee to pay in satoshis/byte. If not supplied, it will be estimated for you.
+            data (str, optional): string to embed in the transaction as null-data output type
+            change_address (str, optional): address to send change to. If not supplied, it will default to the address you are sending from
+            outputs (list, optional): (list of {'to': str, 'value': float} dictionaries. Value float is in BTC)
+
+        Raises:
+            TypeError: with bad parameter types
+
+        Returns:
+            The built and signed transaction
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        transaction = _build_bitcoin_transaction_body(satoshis_per_byte=satoshis_per_byte, data=data, change_address=change_address, outputs=outputs)
+        return self.request.post("/v1/interchains/bitcoin/{}/transaction".format(name), transaction)
+
+    def create_ethereum_interchain(
+        self, name: str, private_key: Optional[str] = None, rpc_address: Optional[str] = None, chain_id: Optional[int] = None
+    ) -> "request_response":
+        """Create (or overwrite) an ethereum wallet/network for interchain use
+
+        Args:
+            name (str): The name to use for this network. Will overwrite if providing a name that already exists
+            private_key (str, optional): The base64 or hex encoded private key. Will generate randomly if not provided
+            rpc_address (str, optional): The endpoint of the ethereum RPC node to use (i.e. http://my-node:8545)
+            chain_id (int, optional): The ethereum chain id to use. Will automatically derive this if providing a custom rpc_address
+                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet|2=ETC Morden
+
+        Raises:
+            TypeError: with bad parameters
+
+        Returns:
+            The created interchain network
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if private_key is not None and not isinstance(private_key, str):
+            raise TypeError('Parameter "private_key" must be of type str.')
+        if rpc_address is not None and not isinstance(rpc_address, str):
+            raise TypeError('Parameter "rpc_address" must be of type str.')
+        if chain_id is not None and not isinstance(chain_id, int):
+            raise TypeError('Parameter "chain_id" must be of type int.')
+        body = cast(Dict[str, Any], {"version": "1", "name": name})
+        if private_key:
+            body["private_key"] = private_key
+        if rpc_address:
+            body["rpc_address"] = rpc_address
+        if chain_id is not None:
+            body["chain_id"] = chain_id
+        return self.request.post("/v1/interchains/ethereum", body)
+
+    def update_ethereum_interchain(
+        self, name: str, private_key: Optional[str] = None, rpc_address: Optional[str] = None, chain_id: Optional[int] = None
+    ) -> "request_response":
+        """Update an existing ethereum wallet/network for interchain use
+
+        Args:
+            name (str): The name of the network to update
+            private_key (str, optional): The base64 or hex encoded private key
+            rpc_address (str, optional): The endpoint of the ethereum RPC node to use (i.e. http://my-node:8545)
+            chain_id (int, optional): The ethereum chain id to use. Will automatically derive this if providing a custom rpc_address
+                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet|2=ETC Morden
+
+        Raises:
+            TypeError: with bad parameters
+
+        Returns:
+            The updated ethereum interchain network
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if private_key is not None and not isinstance(private_key, str):
+            raise TypeError('Parameter "private_key" must be of type str.')
+        if rpc_address is not None and not isinstance(rpc_address, str):
+            raise TypeError('Parameter "rpc_address" must be of type str.')
+        if chain_id is not None and not isinstance(chain_id, int):
+            raise TypeError('Parameter "chain_id" must be of type int.')
+        body = cast(Dict[str, Any], {"version": "1"})
+        if private_key:
+            body["private_key"] = private_key
+        if rpc_address:
+            body["rpc_address"] = rpc_address
+        if chain_id is not None:
+            body["chain_id"] = chain_id
+        return self.request.patch("/v1/interchains/ethereum/{}".format(name), body)
+
+    def sign_ethereum_transaction(
+        self,
+        name: str,
+        to: str,
+        value: str,
+        data: Optional[str] = None,
+        gas_price: Optional[str] = None,
+        gas: Optional[str] = None,
+        nonce: Optional[str] = None,
+    ) -> "request_response":
+        """Create and sign an ethereum transaction using your chain's interchain network
+
+        Args:
+            name (str): name of the ethereum network to use for signing
+            to (str): hex of the address to send to
+            value (str): hex value in wei to send
+            data (str, optional): hex data to publish in the transaction
+            gas_price (str, optional): hex value of the gas price to pay (in wei), if not supplied it will be estimated for you
+            gas (str, optional): hex value of the maximum amount of gas allowed (gasLimit), if not supplied it will be estimated for you
+            nonce (str, optional): hex value of the nonce ot use for this transaction, if not supplied it will be automatically determined
+
+        Raises:
+            TypeError: with bad parameter types
+
+        Returns:
+            The built and signed transaction
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        transaction = _build_ethereum_transaction_body(to=to, value=value, data=data, gas_price=gas_price, gas=gas, nonce=nonce)
+        return self.request.post("/v1/interchains/ethereum/{}/transaction".format(name), transaction)
+
+    def get_interchain_network(self, blockchain: str, name: str) -> "request_response":
+        """Get a configured interchain network/wallet from the chain
+
+        Args:
+            blockchain (str): The blockchain type to get (i.e. 'bitcoin', 'ethereum')
+            name (str): The name of the that blockchain's network (set when creating the network)
+
+        Raises:
+            TypeError: with bad parameter types
+
+        Returns:
+            The saved interchain network (exact schema depends on blockchain)
+        """
+        if not isinstance(blockchain, str):
+            raise TypeError('Parameter "blockchain" must be of type str.')
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        return self.request.get("/v1/interchains/{}/{}".format(blockchain, name))
+
+    def delete_interchain_network(self, blockchain: str, name: str) -> "request_response":
+        """Delete an interchain network/wallet from the chain
+
+        Args:
+            blockchain (str): The blockchain type to delete (i.e. 'bitcoin', 'ethereum')
+            name (str): The name of the that blockchain's network (set when creating the network)
+
+        Raises:
+            TypeError: with bad parameter types
+
+        Returns:
+            Success message
+        """
+        if not isinstance(blockchain, str):
+            raise TypeError('Parameter "blockchain" must be of type str.')
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        return self.request.delete("/v1/interchains/{}/{}".format(blockchain, name))
+
+    def list_interchain_networks(self, blockchain: str) -> "request_response":
+        """List all the interchain network/wallets for a blockchain type
+
+        Args:
+            blockchain (str): The blockchain type to get (i.e. 'bitcoin', 'ethereum')
+
+        Raises:
+            TypeError: with bad parameter type
+
+        Returns:
+            List of interchain networks for the specified blockchain type
+        """
+        if not isinstance(blockchain, str):
+            raise TypeError('Parameter "blockchain" must be of type str.')
+        return self.request.get("/v1/interchains/{}".format(blockchain))
+
+    def set_default_interchain_network(self, blockchain: str, name: str) -> "request_response":
+        """Set the default interchain network for the chain to use (L5 Only)
+
+        Args:
+            blockchain (str): The blockchain type to set (i.e. 'bitcoin', 'ethereum')
+            name (str): The name of the that blockchain's network to use (set when creating the network)
+
+        Raises:
+            TypeError: with bad parameter type
+
+        Returns:
+            The interchain network which was set as default
+        """
+        if not isinstance(blockchain, str):
+            raise TypeError('Parameter "blockchain" must be of type str.')
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        return self.request.post("/v1/interchains/default", {"version": "1", "blockchain": blockchain, "name": name})
+
+    def get_default_interchain_network(self) -> "request_response":
+        """Get the set default interchain network for this chain (L5 Only)
+
+        Returns:
+            The interchain network which was set as default
+        """
+        return self.request.get("/v1/interchains/default")
+
+    def create_bitcoin_transaction(
+        self,
+        network: str,
+        satoshis_per_byte: Optional[int] = None,
+        data: Optional[str] = None,
+        change_address: Optional[str] = None,
+        outputs: Optional[List[Dict[str, Any]]] = None,
+    ) -> "request_response":
+        """!This method is deprecated and should not be used!
+        Backwards compatibility will exist for legacy chains, but will not work on new chains. sign_bitcoin_transaction should be used instead
+
+        Create and sign a bitcoin transaction using your chain's private keys
+
+        Args:
+            network (str): network to create transaction for. Only valid values are ``BTC_MAINNET`` and ``BTC_TESTNET3``
+            satoshis_per_byte (int, optional): fee to pay in satoshis/byte. If not supplied, it will be estimated for you.
+            data (str, optional): string to embed in the transaction as null-data output type
+            change_address (str, optional): address to send change to. If not supplied, it will default to the address you are sending from
+            outputs (list, optional): (list of {'to': str, 'value': float} dictionaries. Value float is in BTC)
+
+        Raises:
+            TypeError: with bad parameter types
+            ValueError: with bad parameter values
+
+        Returns:
+            The built and signed transaction
+        """
+        logger.warning(
+            "This method is deprecated. It will continue to work for legacy chains, but will not work on any new chains. Use sign_bitcoin_transaction instead"
+        )
+        valid_networks = ["BTC_MAINNET", "BTC_TESTNET3"]
+        if network not in valid_networks:
+            raise ValueError('Parameter "network" must be one of {}.'.format(valid_networks))
+        transaction = _build_bitcoin_transaction_body(satoshis_per_byte=satoshis_per_byte, data=data, change_address=change_address, outputs=outputs)
+        return self.request.post("/v1/public-blockchain-transaction", body={"network": network, "transaction": transaction})
+
+    def create_ethereum_transaction(
+        self, network: str, to: str, value: str, data: Optional[str] = None, gas_price: Optional[str] = None, gas: Optional[str] = None
+    ) -> "request_response":
+        """!This method is deprecated and should not be used!
+        Backwards compatibility will exist for legacy chains, but will not work on new chains. sign_ethereum_transaction should be used instead
+
+        Create and sign a public ethereum transaction using your chain's private keys
+
+        Args:
+            network (str): network to create transaction for. Only valid values are:
+                ETH_MAINNET
+                ETH_ROPSTEN
+                ETC_MAINNET
+                ETC_MORDEN
+
+            to (str): hex of the address to send to
+            value (str): hex value (in wei) to send
+            data (str, optional): hex data to publish in the transaction
+            gas_price (str, optional): hex value of the gas price to pay (in wei), if not supplied it will be estimated for you
+            gas (str, optional): hex value of the maximum amount of gas allowed (gasLimit), if not supplied it will be estimated for you
+
+        Raises:
+            TypeError: with bad parameter types
+            ValueError: with bad parameter values
+
+        Returns:
+            The built and signed transaction
+        """
+        logger.warning(
+            "This method is deprecated. It will continue to work for legacy chains, but will not work on any new chains. Use sign_ethereum_transaction instead"
+        )
+        valid_networks = ["ETH_MAINNET", "ETH_ROPSTEN", "ETC_MAINNET", "ETC_MORDEN"]
+        if network not in valid_networks:
+            raise ValueError('Parameter "network" must be one of {}.'.format(valid_networks))
+        transaction = _build_ethereum_transaction_body(to=to, value=value, data=data, gas_price=gas_price, gas=gas)
+        return self.request.post("/v1/public-blockchain-transaction", body={"network": network, "transaction": transaction})
+
+    def get_public_blockchain_addresses(self) -> "request_response":
+        """!This method is deprecated and should not be used!
+        Backwards compatibility will exist for legacy chains, but will not work on new chains. list_interchain_networks should be used instead
+
+        Get interchain addresses for this Dragonchain node (L1 and L5 only)
+
+        Returns:
+            Dictionary containing addresses
+        """
+        logger.warning(
+            "This method is deprecated. It will continue to work for legacy chains, but will not work on any new chains. Use list_interchain_networks instead"
+        )
+        return self.request.get("/v1/public-blockchain-address")
+
 
 def _build_transaction_dict(transaction_type: str, payload: Union[str, Dict[Any, Any]], tag: Optional[str] = None) -> Dict[str, Any]:
     """Build the json (dictionary) body for a transaction given its inputs
@@ -775,5 +1064,92 @@ def _build_transaction_dict(transaction_type: str, payload: Union[str, Dict[Any,
     body = {"version": "1", "txn_type": transaction_type, "payload": payload}
     if tag:
         body["tag"] = tag
+
+    return body
+
+
+def _build_ethereum_transaction_body(
+    to: str, value: str, data: Optional[str] = None, gas_price: Optional[str] = None, gas: Optional[str] = None, nonce: Optional[str] = None
+) -> Dict[str, Any]:
+    """Build the json (dictionary) body for an ethereum transaction given its inputs
+
+    Args:
+        to (str): hex of the address to send to
+        value (str): hex value (in wei) to send
+        data (str, optional): hex data to publish in the transaction
+        gas_price (str, optional): hex value of the gas price to pay (in wei), if not supplied it will be estimated for you
+        gas (str, optional): hex value of the maximum amount of gas allowed (gasLimit), if not supplied it will be estimated for you
+        nonce (str, optional): hex value of the nonce ot use for this transaction, if not supplied it will be automatically determined
+
+    Raises:
+        TypeError: with bad parameter types
+
+    Returns:
+        Dictionary body to use for sending an ethereum transaction
+    """
+    if not isinstance(to, str):
+        raise TypeError('Parameter "to" must be of type str.')
+    if not isinstance(value, str):
+        raise TypeError('Parameter "value" must be of type str.')
+    if data is not None and not isinstance(data, str):
+        raise TypeError('Parameter "data" must be of type str.')
+    if gas_price is not None and not isinstance(gas_price, str):
+        raise TypeError('Parameter "gas_price" must be of type str.')
+    if gas is not None and not isinstance(gas, str):
+        raise TypeError('Parameter "gas" must be of type str.')
+    if nonce is not None and not isinstance(nonce, str):
+        raise TypeError('Parameter "nonce" must be of type str.')
+
+    body = cast(Dict[str, Any], {"version": "1", "to": to, "value": value})
+    if data:
+        body["data"] = data
+    if gas_price:
+        body["gasPrice"] = gas_price
+    if gas:
+        body["gas"] = gas
+    if nonce:
+        body["nonce"] = nonce
+
+    return body
+
+
+def _build_bitcoin_transaction_body(
+    satoshis_per_byte: Optional[int] = None,
+    data: Optional[str] = None,
+    change_address: Optional[str] = None,
+    outputs: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Build the json (dictionary) body for a bitcoin transaction given its inputs
+
+    Args:
+        satoshis_per_byte (int, optional): fee to pay in satoshis/byte. If not supplied, it will be estimated for you.
+        data (str, optional): string to embed in the transaction as null-data output type
+        change_address (str, optional): address to send change to. If not supplied, it will default to the address you are sending from
+        outputs (list, optional): (list of {'to': str, 'value': float} dictionaries. Value float is in BTC)
+
+    Raises:
+        TypeError: with bad parameter types
+
+    Returns:
+        Dictionary body to use for sending a bitcoin transaction
+    """
+    if satoshis_per_byte is not None and not isinstance(satoshis_per_byte, int):
+        raise TypeError('Parameter "satoshis_per_byte" must be of type int.')
+    if data is not None and not isinstance(data, str):
+        raise TypeError('Parameter "data" must be of type str.')
+    if change_address is not None and not isinstance(change_address, str):
+        raise TypeError('Parameter "change_address" must be of type str.')
+    if outputs is not None and not isinstance(outputs, list):
+        raise TypeError('Parameter "outputs" must be of type list.')
+
+    body = cast(Dict[str, Any], {"version": "1"})
+    if outputs:
+        body["outputs"] = outputs
+    if satoshis_per_byte:
+        body["fee"] = satoshis_per_byte
+    if data:
+        body["data"] = data
+    if change_address:
+        body["change"] = change_address
 
     return body

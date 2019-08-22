@@ -34,72 +34,6 @@ class TestMisc(unittest.TestCase):
         self.assertEqual(response.get("status"), 200, response)
         jsonschema.validate(response.get("response"), schema.get_status_schema)
 
-    # BLOCKCHAIN ADDRESSES #
-
-    def test_get_blockchain_addresses(self):
-        response = self.client.get_public_blockchain_addresses()
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.get_blockchain_addresses_schema)
-
-    # CREATE BITCOIN TRANSACTION #
-
-    def test_create_bitcoin_transaction_with_insufficient_crypto(self):
-        response = self.client.create_bitcoin_transaction(network="BTC_MAINNET")
-        expected_response = {
-            "status": 400,
-            "ok": False,
-            "response": {
-                "error": {
-                    "type": "INSUFFICIENT_CRYPTO",
-                    "details": "You do not have enough UTXOs or funds in this address to sign a transaction with",
-                }
-            },
-        }
-        self.assertEqual(expected_response, response)
-
-    # TODO automated way to get test btc to test actually functionality with funds
-
-    # CREATE ETHEREUM TRANSACTION #
-
-    def test_create_ethereum_transaction_with_no_value(self):
-        response = self.client.create_ethereum_transaction(network="ETH_ROPSTEN", to="0x0000000000000000000000000000000000000000", value="0x0")
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.created_ethereum_transaction_schema)
-
-    def test_create_ethereum_transaction_with_data(self):
-        response = self.client.create_ethereum_transaction(
-            network="ETH_ROPSTEN", to="0x0000000000000000000000000000000000000000", value="0x0", data="0xdeadbeef"
-        )
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.created_ethereum_transaction_schema)
-
-    def test_create_ethereum_transaction_with_gas_price(self):
-        response = self.client.create_ethereum_transaction(
-            network="ETH_ROPSTEN", to="0x0000000000000000000000000000000000000000", value="0x0", gas_price="0x1234"
-        )
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.created_ethereum_transaction_schema)
-
-    def test_create_ethereum_transaction_with_gas_limit(self):
-        response = self.client.create_ethereum_transaction(
-            network="ETH_ROPSTEN", to="0x0000000000000000000000000000000000000000", value="0x0", gas="0x1234"
-        )
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.created_ethereum_transaction_schema)
-
-    def test_create_ethereum_transaction_with_all_values(self):
-        response = self.client.create_ethereum_transaction(
-            network="ETH_ROPSTEN", to="0x249A52D7115039a4eB5cd42ca10bbF744F3B678A", value="0x1234", gas="0x4321", gas_price="0xabcd", data="0xbadf00d"
-        )
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.created_ethereum_transaction_schema)
-
     # GET PENDING VERIFICATIONS #
 
     # First we have to create a fresh block (which requires a transaction type)
@@ -174,13 +108,6 @@ class TestMisc(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestMisc("test_get_status"))
-    suite.addTest(TestMisc("test_get_blockchain_addresses"))
-    suite.addTest(TestMisc("test_create_bitcoin_transaction_with_insufficient_crypto"))
-    suite.addTest(TestMisc("test_create_ethereum_transaction_with_no_value"))
-    suite.addTest(TestMisc("test_create_ethereum_transaction_with_data"))
-    suite.addTest(TestMisc("test_create_ethereum_transaction_with_gas_price"))
-    suite.addTest(TestMisc("test_create_ethereum_transaction_with_gas_limit"))
-    suite.addTest(TestMisc("test_create_ethereum_transaction_with_all_values"))
     suite.addTest(TestMisc("set_up_new_block_for_verification"))
     suite.addTest(TestMisc("test_get_pending_verifications_schema_is_valid"))
     suite.addTest(TestMisc("pending_verifications_cleanup"))

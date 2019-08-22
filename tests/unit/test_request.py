@@ -102,6 +102,11 @@ class TestRequestsMethods(unittest.TestCase):
         self.assertEqual(self.request.delete("/test"), "response")
         mock_request.assert_called_once_with(http_verb="DELETE", path="/test", verify=True, parse_response=True)
 
+    @patch("dragonchain_sdk.request.Request._make_request", return_value="response")
+    def test_patch_calls_make_request(self, mock_request):
+        self.assertEqual(self.request.patch("/test", {"data": "banana"}), "response")
+        mock_request.assert_called_once_with(http_verb="PATCH", path="/test", json_content={"data": "banana"}, verify=True, parse_response=True)
+
     def test_get_request_method_raises_type_error(self):
         self.assertRaises(TypeError, self.request.get_requests_method, [])
         self.assertRaises(TypeError, self.request.get_requests_method, {})
