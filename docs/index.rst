@@ -12,7 +12,7 @@ a `Dragonchain <https://dragonchain.com>`_ with Python 3.
 Source Code
 -----------
 
-All of the source code, as well as issue tracker can be viewed `on github <https://github.com/dragonchain-inc/dragonchain-sdk-python/>`_.
+All of the source code, as well as issue tracker can be viewed `on github <https://github.com/dragonchain/dragonchain-sdk-python/>`_.
 
 .. toctree::
    :caption: Contents

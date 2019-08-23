@@ -20,6 +20,8 @@ Features:
     * ``list_interchain_networks``
     * ``set_default_interchain_network``
     * ``get_default_interchain_network``
+Packaging:
+  * Moved repository to `new location <https://github.com/dragonchain/dragonchain-sdk-python>`_
 
 3.2.0
 -----

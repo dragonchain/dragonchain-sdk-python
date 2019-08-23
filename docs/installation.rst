@@ -35,7 +35,7 @@ From Source
 
 You can also install this package from source. To do so, get the source
 code (via git clone like
-``git clone https://github.com/dragonchain-inc/dragonchain-sdk-python.git``
+``git clone https://github.com/dragonchain/dragonchain-sdk-python.git``
 or simply downloading/extracting a source tarball from releases), then
 navigate into the root project directory. Now ensure that you have pip
 installed and you can install all the requirements for this project

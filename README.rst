@@ -1,20 +1,20 @@
 .. image:: https://img.shields.io/pypi/v/dragonchain-sdk.svg
    :target: https://pypi.org/project/dragonchain-sdk/
    :alt: Latest PyPI version
-.. image:: https://travis-ci.org/dragonchain-inc/dragonchain-sdk-python.svg?branch=master
-   :target: https://travis-ci.org/dragonchain-inc/dragonchain-sdk-python
+.. image:: https://travis-ci.org/dragonchain/dragonchain-sdk-python.svg?branch=master
+   :target: https://travis-ci.org/dragonchain/dragonchain-sdk-python
    :alt: Build Status
-.. image:: https://api.codeclimate.com/v1/badges/d9ab43d29af318ec4121/test_coverage
-   :target: https://codeclimate.com/github/dragonchain-inc/dragonchain-sdk-python/test_coverage
+.. image:: https://api.codeclimate.com/v1/badges/7a796ebcc6e3ccdc75be/test_coverage
+   :target: https://codeclimate.com/github/dragonchain/dragonchain-sdk-python/test_coverage
    :alt: Test Coverage
 .. image:: https://img.shields.io/pypi/pyversions/dragonchain-sdk.svg
-   :target: https://github.com/dragonchain-inc/dragonchain-sdk-python/
+   :target: https://github.com/dragonchain/dragonchain-sdk-python/
    :alt: Python Version Support
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/python/black
    :alt: Code Style Black
 .. image:: https://img.shields.io/pypi/l/dragonchain-sdk.svg
-   :target: https://github.com/dragonchain-inc/dragonchain-sdk-python/blob/master/LICENSE
+   :target: https://github.com/dragonchain/dragonchain-sdk-python/blob/master/LICENSE
    :alt: License
 .. image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fpython-sdk-docs.dragonchain.com%2Fbanana-shield.json
    :alt: Banana Index
@@ -49,7 +49,7 @@ The easiest way to install this repository is with pip. Simply run:
 
 You can also install this package from source. To do so, get the source
 code (via git clone like
-``git clone https://github.com/dragonchain-inc/dragonchain-sdk-python.git``
+``git clone https://github.com/dragonchain/dragonchain-sdk-python.git``
 or simply downloading/extracting a source tarball from releases), then
 navigate into the root project directory. Now ensure that you have pip
 installed and you can install all the requirements for this project
@@ -82,4 +82,4 @@ Contributing
 ------------
 
 Dragonchain is happy to welcome contributions from the community.
-You can get started `on github <https://github.com/dragonchain-inc/dragonchain-sdk-python/blob/master/CONTRIBUTING.rst>`_.
+You can get started `on github <https://github.com/dragonchain/dragonchain-sdk-python/blob/master/CONTRIBUTING.rst>`_.

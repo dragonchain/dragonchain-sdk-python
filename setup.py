@@ -70,7 +70,7 @@ setuptools.setup(
     ],
     project_urls={
         "Documentation": "https://python-sdk-docs.dragonchain.com/latest/",
-        "Source": "https://github.com/dragonchain-inc/dragonchain-sdk-python",
-        "Tracker": "https://github.com/dragonchain-inc/dragonchain-sdk-python/issues",
+        "Source": "https://github.com/dragonchain/dragonchain-sdk-python",
+        "Tracker": "https://github.com/dragonchain/dragonchain-sdk-python/issues",
     },
 )

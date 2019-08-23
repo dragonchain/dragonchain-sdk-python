@@ -87,7 +87,7 @@ You can catch with this exception to catch any exceptions that are
 raised from the sdk
 
 If any exception raised from the sdk does not derive from this class,
-it should be considered a bug and reported to `the issue tracker <https://github.com/dragonchain-inc/dragonchain-sdk-python/issues>`_
+it should be considered a bug and reported to `the issue tracker <https://github.com/dragonchain/dragonchain-sdk-python/issues>`_
 with reproduction steps.
 
 Example
