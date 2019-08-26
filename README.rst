@@ -1,10 +1,10 @@
 .. image:: https://img.shields.io/pypi/v/dragonchain-sdk.svg
    :target: https://pypi.org/project/dragonchain-sdk/
    :alt: Latest PyPI version
-.. image:: https://travis-ci.org/dragonchain/dragonchain-sdk-python.svg?branch=master
+.. image:: https://img.shields.io/travis/dragonchain/dragonchain-sdk-python
    :target: https://travis-ci.org/dragonchain/dragonchain-sdk-python
    :alt: Build Status
-.. image:: https://api.codeclimate.com/v1/badges/7a796ebcc6e3ccdc75be/test_coverage
+.. image:: https://img.shields.io/codeclimate/coverage/dragonchain/dragonchain-sdk-python
    :target: https://codeclimate.com/github/dragonchain/dragonchain-sdk-python/test_coverage
    :alt: Test Coverage
 .. image:: https://img.shields.io/pypi/pyversions/dragonchain-sdk.svg
