@@ -15,8 +15,8 @@ import unittest
 
 import jsonschema
 
-from tests.integration import schema
 import dragonchain_sdk
+from tests.integration import schema
 
 TEST_TRANSACTION_TYPE = "test-blocks"
 EXISTING_BLOCK = None
@@ -29,101 +29,123 @@ class TestBlocks(unittest.TestCase):
     def test_block_set_up(self):
         # We need to post some transactions so a block will be created
         self.client.create_transaction_type(TEST_TRANSACTION_TYPE)
-        global TEST_TXN_ID_1
-        global TEST_TXN_ID_2
         self.client.create_transaction(TEST_TRANSACTION_TYPE, "string payload", tag="tagging")
+        time.sleep(10)
         self.client.create_transaction(TEST_TRANSACTION_TYPE, {"object": "payload"})
         time.sleep(10)
 
     # QUERY #
 
-    def test_query_blocks_works_with_no_parameters(self):
-        response = self.client.query_blocks()
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
+    def test_query_blocks_generic(self):
+        response = self.client.query_blocks("*")
+        self.assertEqual(response.get("status"), 200)
+        self.assertTrue(response.get("ok"))
         jsonschema.validate(response.get("response"), schema.query_block_schema)
+        self.assertGreaterEqual(response["response"]["total"], 2)  # Assure we have at least as many blocks as we just created
         global EXISTING_BLOCK
         EXISTING_BLOCK = response["response"]["results"][0]
 
-    def test_query_blocks_works_with_limit(self):
-        response = self.client.query_blocks(limit=2)
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.query_block_schema)
-        self.assertEqual(2, len(response["response"]["results"]))
-
-    def test_query_blocks_works_with_offset(self):
-        # We'll check that these results give valid responses and aren't identical
-        response1 = self.client.query_blocks(offset=0, limit=1)
-        response2 = self.client.query_blocks(offset=2, limit=1)
-        self.assertTrue(response1.get("ok"), response1)
+    def test_query_blocks_by_timestamp(self):
+        # Get all block timestamp below now, sorted by timestamp
+        response1 = self.client.query_blocks("@timestamp:[-inf {}]".format(time.time()), sort_by="timestamp", sort_ascending=True)
+        response2 = self.client.query_blocks("@timestamp:[-inf {}]".format(time.time()), sort_by="timestamp", sort_ascending=False)
+        response3 = self.client.query_blocks("@timestamp:[{} +inf]".format(time.time()))  # Should not return any results
         self.assertEqual(response1.get("status"), 200, response1)
-        jsonschema.validate(response1.get("response"), schema.query_block_schema)
-        self.assertTrue(response2.get("ok"), response2)
         self.assertEqual(response2.get("status"), 200, response2)
-        jsonschema.validate(response2.get("response"), schema.query_block_schema)
-        self.assertNotEqual(response1["response"]["results"], response2["response"]["results"])
-
-    def test_query_blocks_works_with_sorting(self):
-        response1 = self.client.query_blocks(sort="timestamp:desc", limit=5)
-        response2 = self.client.query_blocks(sort="block_id:desc", limit=5)
+        self.assertEqual(response2.get("status"), 200, response3)
         self.assertTrue(response1.get("ok"), response1)
-        self.assertEqual(response1.get("status"), 200, response1)
-        jsonschema.validate(response1.get("response"), schema.query_block_schema)
         self.assertTrue(response2.get("ok"), response2)
-        self.assertEqual(response2.get("status"), 200, response2)
-        jsonschema.validate(response2.get("response"), schema.query_block_schema)
-        timestamp_list = []
-        block_id_list = []
-        for block in response1["response"]["results"]:
-            timestamp_list.append(block["header"]["timestamp"])
-        for block in response2["response"]["results"]:
-            block_id_list.append(block["header"]["block_id"])
-        # Ensure our sorting worked by checking that the timestamps and block_ids are in ascending ascending order (sorted)
-        self.assertEqual(timestamp_list, sorted(timestamp_list)[::-1])
-        self.assertEqual(block_id_list, sorted(block_id_list)[::-1])
-
-    def test_query_blocks_with_basic_lucene_query(self):
-        response1 = self.client.query_blocks(lucene_query='block_id:"{}"'.format(EXISTING_BLOCK["header"]["block_id"]))
-        response2 = self.client.query_blocks(lucene_query='timestamp:"{}"'.format(EXISTING_BLOCK["header"]["timestamp"]))
-        self.assertTrue(response1.get("ok"), response1)
-        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertTrue(response2.get("ok"), response3)
         jsonschema.validate(response1.get("response"), schema.query_block_schema)
-        self.assertEqual(1, response1["response"]["total"])
-        self.assertTrue(response2.get("ok"), response2)
-        self.assertEqual(response2.get("status"), 200, response2)
         jsonschema.validate(response2.get("response"), schema.query_block_schema)
-        self.assertEqual(1, response2["response"]["total"])
-        # Make sure we got exactly 1 result
-        self.assertEqual(len(response1["response"]["results"]), 1)
-        self.assertEqual(len(response2["response"]["results"]), 1)
-        self.assertEqual(response1["response"]["results"][0], EXISTING_BLOCK)
-        self.assertEqual(response2["response"]["results"][0], EXISTING_BLOCK)
-
-    def test_query_blocks_with_compound_lucene_query(self):
-        response = self.client.query_blocks(
-            lucene_query='block_id:"{}" AND timestamp:"{}"'.format(EXISTING_BLOCK["header"]["block_id"], EXISTING_BLOCK["header"]["timestamp"])
+        jsonschema.validate(response3.get("response"), schema.query_block_schema)
+        # Check our query that shouldn't have gotten any results worked
+        self.assertEqual(response3["response"]["total"], 0)
+        # Check sorted order is correct
+        self.assertGreater(
+            int(response1["response"]["results"][1]["header"]["timestamp"]), int(response1["response"]["results"][0]["header"]["timestamp"])
         )
-        self.assertTrue(response.get("ok"), response)
+        self.assertGreater(
+            int(response2["response"]["results"][0]["header"]["timestamp"]), int(response2["response"]["results"][1]["header"]["timestamp"])
+        )
+
+    def test_query_blocks_by_id(self):
+        current_block = int((time.time() - 1432238220) / 5)
+        response1 = self.client.query_blocks("@block_id:[-inf {}]".format(current_block), sort_by="block_id", sort_ascending=True)
+        response2 = self.client.query_blocks("@block_id:[-inf {}]".format(current_block), sort_by="block_id", sort_ascending=False)
+        response3 = self.client.query_blocks("@block_id:[{} +inf]".format(current_block))  # Should not return any results
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertEqual(response2.get("status"), 200, response3)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        self.assertTrue(response2.get("ok"), response3)
+        jsonschema.validate(response1.get("response"), schema.query_block_schema)
+        jsonschema.validate(response2.get("response"), schema.query_block_schema)
+        jsonschema.validate(response3.get("response"), schema.query_block_schema)
+        # Check our query that shouldn't have gotten any results worked
+        self.assertEqual(response3["response"]["total"], 0)
+        # Check sorted order is correct
+        self.assertGreater(
+            int(response1["response"]["results"][1]["header"]["block_id"]), int(response1["response"]["results"][0]["header"]["block_id"])
+        )
+        self.assertGreater(
+            int(response2["response"]["results"][0]["header"]["block_id"]), int(response2["response"]["results"][1]["header"]["block_id"])
+        )
+
+    def test_query_blocks_by_prev_id(self):
+        prev_id = EXISTING_BLOCK["header"]["prev_id"]
+        # Do a number query with min/max as an exact id (essentially searching by exact prev_id)
+        response = self.client.query_blocks("@prev_id:[{} {}]".format(prev_id, prev_id))
         self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.query_block_schema)
-        self.assertEqual(1, response["response"]["total"], response)
-        # Make sure we got exactly 1 result
-        self.assertEqual(len(response["response"]["results"]), 1)
-        self.assertEqual(response["response"]["results"][0], EXISTING_BLOCK)
-
-    def test_query_blocks_with_no_result_lucene_query(self):
-        response = self.client.query_blocks(lucene_query='block_id:"9876543210"')
         self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
         jsonschema.validate(response.get("response"), schema.query_block_schema)
-        self.assertEqual(0, response["response"]["total"])
-        # Make sure we got exactly 0 result
-        self.assertEqual(len(response["response"]["results"]), 0)
+        # Check that our query only fetched one result, (since only one prev_id should match)
+        self.assertEqual(response["response"]["total"], 1)
+        # Check the result we got contains the block we expect
+        self.assertIn(EXISTING_BLOCK, response["response"]["results"])
 
-    # TODO: Add more robust lucene query checking
+    def test_query_blocks_ids_only(self):
+        response = self.client.query_blocks("*", ids_only=True)
+        self.assertEqual(response.get("status"), 200, response)
+        self.assertTrue(response.get("ok"), response)
+        jsonschema.validate(response.get("response"), schema.query_ids_only)
+        self.assertGreaterEqual(response["response"]["total"], 2)
 
-    # TODO: Add tests for bad queries
+    def test_query_blocks_paging(self):
+        # For testing offset and limit parameters in a query
+        response1 = self.client.query_blocks("*", limit=0)
+        response2 = self.client.query_blocks("*", offset=0, limit=1, ids_only=True)
+        response3 = self.client.query_blocks("*", offset=1, limit=1, ids_only=True)
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertEqual(response3.get("status"), 200, response3)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        self.assertTrue(response3.get("ok"), response3)
+        jsonschema.validate(response1.get("response"), schema.query_block_schema)
+        jsonschema.validate(response2.get("response"), schema.query_ids_only)
+        jsonschema.validate(response3.get("response"), schema.query_ids_only)
+        # Check we got the correct totals
+        self.assertGreaterEqual(response1["response"]["total"], 2)
+        self.assertGreaterEqual(response2["response"]["total"], 2)
+        self.assertGreaterEqual(response3["response"]["total"], 2)
+        # Check that limit 0 returned an empty array
+        self.assertEqual(response1["response"]["results"], [], "Limit 0 returned actual results")
+        # Ensure the query returned the expected number of results in the array
+        self.assertEqual(len(response2["response"]["results"]), 1)
+        self.assertEqual(len(response3["response"]["results"]), 1)
+        # Ensure our paginated results didn't return the same thing (same query with different offsets)
+        self.assertNotEqual(response2["response"]["results"], response3["response"]["results"])
+
+    def test_query_blocks_raises_400_with_bad_query(self):
+        response = self.client.query_blocks("invalid-")
+        expected_response = {
+            "status": 400,
+            "ok": False,
+            "response": {"error": {"type": "BAD_REQUEST", "details": "Syntax error at offset 7 near 'invalid'"}},
+        }
+        self.assertEqual(response, expected_response)
 
     # GET #
 
@@ -148,13 +170,13 @@ class TestBlocks(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestBlocks("test_block_set_up"))
-    suite.addTest(TestBlocks("test_query_blocks_works_with_no_parameters"))
-    suite.addTest(TestBlocks("test_query_blocks_works_with_limit"))
-    suite.addTest(TestBlocks("test_query_blocks_works_with_offset"))
-    suite.addTest(TestBlocks("test_query_blocks_works_with_sorting"))
-    suite.addTest(TestBlocks("test_query_blocks_with_basic_lucene_query"))
-    suite.addTest(TestBlocks("test_query_blocks_with_compound_lucene_query"))
-    suite.addTest(TestBlocks("test_query_blocks_with_no_result_lucene_query"))
+    suite.addTest(TestBlocks("test_query_blocks_generic"))
+    suite.addTest(TestBlocks("test_query_blocks_by_timestamp"))
+    suite.addTest(TestBlocks("test_query_blocks_by_id"))
+    suite.addTest(TestBlocks("test_query_blocks_by_prev_id"))
+    suite.addTest(TestBlocks("test_query_blocks_ids_only"))
+    suite.addTest(TestBlocks("test_query_blocks_paging"))
+    suite.addTest(TestBlocks("test_query_blocks_raises_400_with_bad_query"))
     suite.addTest(TestBlocks("test_get_block_with_valid_id"))
     suite.addTest(TestBlocks("test_get_block_with_invalid_id_returns_404"))
     suite.addTest(TestBlocks("test_block_tear_down"))

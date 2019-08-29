@@ -87,6 +87,60 @@ class TestClientInitialization(unittest.TestCase):
 @patch("dragonchain_sdk.dragonchain_client.request")
 @patch("dragonchain_sdk.dragonchain_client.credentials")
 class TestClientMehods(unittest.TestCase):
+    def test__validate_and_build_custom_index_fields_array_trims_unnecessary_fields(self, mock_creds, mock_request):
+        my_index = {"type": "text", "path": "a.b", "field_name": "myField", "options": {"not_needed": "thing"}, "unnecessary": "stuff"}
+        result = dragonchain_client._validate_and_build_custom_index_fields_array([my_index])
+        # Remove unnecessary fields and check thats what the validation returned
+        del my_index["unnecessary"]
+        del my_index["options"]["not_needed"]
+        self.assertEqual(result[0], my_index)
+
+    def test__validate_and_build_custom_index_fields_array_extracts_necessary_option_fields(self, mock_creds, mock_request):
+        my_index = {"type": "text", "path": "a.b", "field_name": "myField", "options": {}}
+        self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
+        my_index["options"] = {"weight": 0.0, "no_stem": True, "sortable": False}
+        self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
+        my_index["options"] = {"no_index": True}
+        self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
+        my_index["type"] = "tag"
+        my_index["options"] = {"separator": "thing"}
+        self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
+        my_index["options"] = {"no_index": True}
+        self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
+        my_index["type"] = "number"
+        my_index["options"] = {"sortable": True}
+        self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
+        my_index["options"] = {"no_index": True}
+        self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
+
+    def test__validate_and_build_custom_index_fields_array_checks_root_fields(self, mock_creds, mock_request):
+        my_index = {"type": "text", "path": "a.b", "field_name": "myField", "options": 123}
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, ["not_valid"])
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+        my_index["field_name"] = 123
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+        my_index["type"] = 123
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+        my_index["path"] = 123
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+
+    def test__validate_and_build_custom_index_fields_array_checks_option_types(self, mock_creds, mock_request):
+        my_index = {
+            "type": "text",
+            "path": "a.b",
+            "field_name": "myField",
+            "options": {"separator": ",", "no_index": False, "weight": 0.0, "no_stem": False, "sortable": "bogus"},
+        }
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+        my_index["options"]["no_stem"] = "bogus"
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+        my_index["options"]["weight"] = "bogus"
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+        my_index["options"]["no_index"] = "bogus"
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+        my_index["options"]["separator"] = 123
+        self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
+
     def test__build_transaction_dict_raises_type_error(self, mock_creds, mock_request):
         self.assertRaises(TypeError, dragonchain_client._build_transaction_dict, {}, {"fake": "payload"}, 'Tag:"value"')
         self.assertRaises(TypeError, dragonchain_client._build_transaction_dict, "FAKEtransaction", [], 'Tag:"value"')
@@ -130,17 +184,10 @@ class TestClientMehods(unittest.TestCase):
         self.client.get_status()
         self.client.request.get.assert_called_once_with("/v1/status")
 
-    def test_query_smart_contracts_calls_get_without_params(self, mock_creds, mock_request):
-        mock_request.Request.return_value.get_lucene_query_params.return_value = ""
+    def test_list_smart_contracts_calls_get(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.client.query_smart_contracts()
+        self.client.list_smart_contracts()
         self.client.request.get.assert_called_once_with("/v1/contract")
-
-    def test_query_smart_contracts_calls_get_with_params(self, mock_creds, mock_request):
-        mock_request.Request.return_value.get_lucene_query_params.return_value = "?limit=5&offset=10"
-        self.client = dragonchain_sdk.create_client()
-        self.client.query_smart_contracts()
-        self.client.request.get.assert_called_once_with("/v1/contract?limit=5&offset=10")
 
     def test_get_smart_contract_throws_type_error(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
@@ -208,6 +255,9 @@ class TestClientMehods(unittest.TestCase):
         self.assertRaises(
             TypeError, self.client.create_smart_contract, transaction_type="valid", image="valid", cmd="", args=["valid"], registry_credentials=[]
         )
+        self.assertRaises(
+            TypeError, self.client.create_smart_contract, transaction_type="valid", image="valid", cmd="", args=["valid"], custom_index_fields="blah"
+        )
 
     def test_create_smart_contract_calls_post(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
@@ -264,7 +314,7 @@ class TestClientMehods(unittest.TestCase):
             {"version": "3", "txn_type": "Name", "image": "ubuntu:latest", "cmd": "python3.6", "execution_order": "serial", "auth": "auth"},
         )
 
-    def test_post_custom_contract_calls_post_with_seconds(self, mock_creds, mock_request):
+    def test_create_smart_contract_calls_post_with_seconds(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.create_smart_contract("Name", "ubuntu:latest", "python3.6", None, "serial", None, {"secret": "test"})
         self.client.request.post.assert_called_once_with(
@@ -279,11 +329,28 @@ class TestClientMehods(unittest.TestCase):
             },
         )
 
-    def test_post_custom_contract_calls_post_no_env(self, mock_creds, mock_request):
+    def test_create_smart_contract_calls_post_no_env(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.create_smart_contract("Name", "ubuntu:latest", "python3.6", None, "serial")
         self.client.request.post.assert_called_once_with(
             "/v1/contract", {"version": "3", "txn_type": "Name", "image": "ubuntu:latest", "cmd": "python3.6", "execution_order": "serial"}
+        )
+
+    def test_create_smart_contract_calls_post_with_custom_indexes(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.create_smart_contract(
+            "Name", "ubuntu:latest", "python3.6", custom_index_fields=[{"type": "text", "field_name": "myField", "path": "a.b"}]
+        )
+        self.client.request.post.assert_called_once_with(
+            "/v1/contract",
+            {
+                "version": "3",
+                "txn_type": "Name",
+                "image": "ubuntu:latest",
+                "cmd": "python3.6",
+                "execution_order": "parallel",
+                "custom_indexes": [{"path": "a.b", "type": "text", "field_name": "myField", "options": {}}],
+            },
         )
 
     def test_update_smart_contract_raises_type_error(self, mock_creds, mock_request):
@@ -369,17 +436,43 @@ class TestClientMehods(unittest.TestCase):
         self.client.delete_smart_contract(smart_contract_id="some_id")
         self.client.request.delete.assert_called_once_with("/v1/contract/some_id")
 
-    def test_query_transactions_calls_get_without_params(self, mock_creds, mock_request):
-        mock_request.Request.return_value.get_lucene_query_params.return_value = ""
-        self.client = dragonchain_sdk.create_client()
-        self.client.query_transactions()
-        self.client.request.get.assert_called_once_with("/v1/transaction")
-
     def test_query_transactions_calls_get_with_params(self, mock_creds, mock_request):
-        mock_request.Request.return_value.get_lucene_query_params.return_value = "?limit=5&offset=10"
+        mock_request.Request.return_value.generate_query_string.return_value = "?whatever"
         self.client = dragonchain_sdk.create_client()
-        self.client.query_transactions()
-        self.client.request.get.assert_called_once_with("/v1/transaction?limit=5&offset=10")
+        self.client.query_transactions("txn_type", "irrelevant_query")
+        self.client.request.generate_query_string.assert_called_once_with(
+            {"transaction_type": "txn_type", "q": "irrelevant_query", "verbatim": False, "offset": 0, "limit": 10, "id_only": False}
+        )
+        self.client.request.get.assert_called_once_with("/v1/transaction?whatever")
+
+    def test_query_transactions_adds_sort_by_when_provided(self, mock_creds, mock_request):
+        mock_request.Request.return_value.generate_query_string.return_value = "?whatever"
+        self.client = dragonchain_sdk.create_client()
+        self.client.query_transactions("txn_type", "irrelevant_query", sort_by="field", sort_ascending=False)
+        self.client.request.generate_query_string.assert_called_once_with(
+            {
+                "transaction_type": "txn_type",
+                "q": "irrelevant_query",
+                "verbatim": False,
+                "offset": 0,
+                "limit": 10,
+                "id_only": False,
+                "sort_by": "field",
+                "sort_asc": False,
+            }
+        )
+
+    def test_query_transactions_throws_type_error(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.query_transactions)
+        self.assertRaises(TypeError, self.client.query_transactions, 1234, "q")
+        self.assertRaises(TypeError, self.client.query_transactions, "txn_type", 1234)
+        self.assertRaises(TypeError, self.client.query_transactions, "txn_type", "q", 1234)
+        self.assertRaises(TypeError, self.client.query_transactions, "txn_type", "q", True, "abc")
+        self.assertRaises(TypeError, self.client.query_transactions, "txn_type", "q", True, 1, "abc")
+        self.assertRaises(TypeError, self.client.query_transactions, "txn_type", "q", True, 1, 1, 123)
+        self.assertRaises(TypeError, self.client.query_transactions, "txn_type", "q", True, 1, 1, "field", 123)
+        self.assertRaises(TypeError, self.client.query_transactions, "txn_type", "q", True, 1, 1, "field", True, 123)
 
     def test_post_bulk_transaction_raises_type_error(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
@@ -447,17 +540,30 @@ class TestClientMehods(unittest.TestCase):
         self.client.get_transaction("Test")
         self.client.request.get.assert_called_once_with("/v1/transaction/Test")
 
-    def test_query_blocks_calls_get_without_params(self, mock_creds, mock_request):
-        mock_request.Request.return_value.get_lucene_query_params.return_value = ""
-        self.client = dragonchain_sdk.create_client()
-        self.client.query_blocks()
-        self.client.request.get.assert_called_once_with("/v1/block")
-
     def test_query_blocks_calls_get_with_params(self, mock_creds, mock_request):
-        mock_request.Request.return_value.get_lucene_query_params.return_value = "?limit=5&offset=10"
+        mock_request.Request.return_value.generate_query_string.return_value = "?whatever"
         self.client = dragonchain_sdk.create_client()
-        self.client.query_blocks()
-        self.client.request.get.assert_called_once_with("/v1/block?limit=5&offset=10")
+        self.client.query_blocks("irrelevant")
+        self.client.request.generate_query_string.assert_called_once_with({"q": "irrelevant", "offset": 0, "limit": 10, "id_only": False})
+        self.client.request.get.assert_called_once_with("/v1/block?whatever")
+
+    def test_query_blocks_adds_sort_by_when_provided(self, mock_creds, mock_request):
+        mock_request.Request.return_value.generate_query_string.return_value = "?whatever"
+        self.client = dragonchain_sdk.create_client()
+        self.client.query_blocks("irrelevant", sort_by="field", sort_ascending=False)
+        self.client.request.generate_query_string.assert_called_once_with(
+            {"q": "irrelevant", "offset": 0, "limit": 10, "id_only": False, "sort_by": "field", "sort_asc": False}
+        )
+
+    def test_query_blocks_throws_type_error(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.query_blocks)
+        self.assertRaises(TypeError, self.client.query_blocks, 1234)
+        self.assertRaises(TypeError, self.client.query_blocks, "q", "abc")
+        self.assertRaises(TypeError, self.client.query_blocks, "q", 1, "abc")
+        self.assertRaises(TypeError, self.client.query_blocks, "q", 1, 1, 123)
+        self.assertRaises(TypeError, self.client.query_blocks, "q", 1, 1, "field", 123)
+        self.assertRaises(TypeError, self.client.query_blocks, "q", 1, 1, "field", True, 123)
 
     def test_get_block_throws_type_error(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
@@ -566,39 +672,23 @@ class TestClientMehods(unittest.TestCase):
         self.client.list_smart_contract_objects(smart_contract_id="MyContract")
         self.client.request.get.assert_called_once_with("/v1/list/MyContract/")
 
-    def test_create_transaction_type_calls_post(self, mock_creds, mock_request):
+    def test_create_transaction_type_calls_post_without_custom_indexes(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.create_transaction_type("MyNewType")
-        self.client.request.post.assert_called_once_with("/v1/transaction-type", {"version": "1", "txn_type": "MyNewType"})
+        self.client.request.post.assert_called_once_with("/v1/transaction-type", {"version": "2", "txn_type": "MyNewType"})
 
     def test_create_transaction_type_calls_post_with_custom_indexes(self, mock_creds, mock_request):
-        custom_indexes = [{"key": "name", "path": "body.name"}]
+        custom_indexes = [{"path": "a.b", "field_name": "myField", "type": "text", "options": {}}]
         self.client = dragonchain_sdk.create_client()
         self.client.create_transaction_type("MyNewType", custom_indexes)
         self.client.request.post.assert_called_once_with(
-            "/v1/transaction-type", {"version": "1", "txn_type": "MyNewType", "custom_indexes": custom_indexes}
+            "/v1/transaction-type", {"version": "2", "txn_type": "MyNewType", "custom_indexes": custom_indexes}
         )
 
-    def test_create_transaction_type_raises_error_type_is_not_string(self, mock_creds, mock_request):
+    def test_create_transaction_type_raises_errors(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.assertRaises(TypeError, self.client.create_transaction_type, {})
-
-    def test_create_transaction_type_raises_error_indexes_not_array(self, mock_creds, mock_request):
-        self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.create_transaction_type, "myType", "notaobject")
-
-    def test_update_transaction_type_calls_put(self, mock_creds, mock_request):
-        self.client = dragonchain_sdk.create_client()
-        self.client.update_transaction_type("MyCurrentType", custom_indexes=[])
-        self.client.request.put.assert_called_once_with("/v1/transaction-type/MyCurrentType", {"version": "1", "custom_indexes": []})
-
-    def test_update_transaction_type_raises_error_with_invalid_transaction_type(self, mock_creds, mock_request):
-        self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.update_transaction_type, {}, {"key": "apples", "path": "banana"})
-
-    def test_update_transaction_type_raises_error_with_invalid_indexes(self, mock_creds, mock_request):
-        self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.update_transaction_type, "myType", {})
+        self.assertRaises(TypeError, self.client.create_transaction_type, "myType", "not a list")
 
     def test_delete_transaction_type_calls_delete(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()

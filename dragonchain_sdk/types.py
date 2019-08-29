@@ -17,4 +17,6 @@ if not TYPE_CHECKING:
 import mypy_extensions  # noqa: E402 Want to explicitly ensure not type checking before importing extensions
 
 request_response = mypy_extensions.TypedDict("request_response", {"status": int, "ok": bool, "response": Union[Dict[Any, Any], str]})
-custom_index_type = mypy_extensions.TypedDict("custom_index_type", {"key": str, "path": str})
+custom_index_fields_type = mypy_extensions.TypedDict(
+    "custom_index_fields_type", {"path": str, "field_name": str, "type": str, "options": Dict[str, Any]}
+)

@@ -4,6 +4,7 @@ branches:
     - production
 language: python
 matrix:
+  fast_finish: true
   include:
     - name: PyPy 3.5
       python: pypy3

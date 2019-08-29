@@ -158,37 +158,6 @@ class TestRequestsMethods(unittest.TestCase):
         self.assertIn("key2=val2", query)
         self.assertEqual(query.count("&"), 1)
 
-    def test_get_lucene_query_params_raises_type_error(self):
-        self.assertRaises(TypeError, self.request.get_lucene_query_params, query=[])
-        self.assertRaises(TypeError, self.request.get_lucene_query_params, sort=[])
-        self.assertRaises(TypeError, self.request.get_lucene_query_params, limit=[])
-        self.assertRaises(TypeError, self.request.get_lucene_query_params, offset=[])
-
-    def test_get_lucene_query_params(self):
-        query = self.request.get_lucene_query_params(query='test:"val"', sort="test:desc", offset=0, limit=100)
-        self.assertEqual(query[0], "?")
-        self.assertIn("offset=0", query)
-        self.assertIn("limit=100", query)
-        self.assertIn("q=test%3A%22val%22", query)
-        self.assertIn("sort=test%3Adesc", query)
-        self.assertEqual(query.count("&"), 3)
-
-    def test_get_lucene_query_params_no_query(self):
-        query = self.request.get_lucene_query_params(sort="test:desc", offset=0, limit=100)
-        self.assertEqual(query[0], "?")
-        self.assertIn("offset=0", query)
-        self.assertIn("limit=100", query)
-        self.assertIn("sort=test%3Adesc", query)
-        self.assertEqual(query.count("&"), 2)
-
-    def test_get_lucene_query_params_no_sort(self):
-        query = self.request.get_lucene_query_params(query='test:"val"', offset=0, limit=100)
-        self.assertEqual(query[0], "?")
-        self.assertIn("offset=0", query)
-        self.assertIn("limit=100", query)
-        self.assertIn("q=test%3A%22val%22", query)
-        self.assertEqual(query.count("&"), 2)
-
     def test_make_headers(self):
         self.assertEqual(
             self.request._make_headers("Timestamp", "Auth", ""), {"dragonchain": "TestID", "timestamp": "Timestamp", "Authorization": "Auth"}
