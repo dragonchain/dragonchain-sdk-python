@@ -817,7 +817,7 @@ class Client(object):
             private_key (str, optional): The base64 or hex encoded private key. Will generate randomly if not provided
             rpc_address (str, optional): The endpoint of the ethereum RPC node to use (i.e. http://my-node:8545)
             chain_id (int, optional): The ethereum chain id to use. Will automatically derive this if providing a custom rpc_address
-                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet|2=ETC Morden
+                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet|62=ETC Morden
 
         Raises:
             TypeError: with bad parameters
