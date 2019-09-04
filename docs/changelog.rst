@@ -34,6 +34,7 @@ Features:
   * Support adding custom indexes for smart contracts on creation
   * Support optionally fetching ids only (not entire documents) for querying
   * Support list smart contracts
+  * Support disable schedule for ``update_smart_contract``
 Documentation:
   * Added docs for migrating from v3 to v4
 Development:

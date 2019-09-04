@@ -367,6 +367,7 @@ class TestClientMehods(unittest.TestCase):
         self.assertRaises(TypeError, self.client.update_smart_contract, smart_contract_id="some_id", cron_expression=1)
         self.assertRaises(TypeError, self.client.update_smart_contract, smart_contract_id="some_id", registry_credentials=[])
         self.assertRaises(TypeError, self.client.update_smart_contract, smart_contract_id="some_id", enabled=[])
+        self.assertRaises(TypeError, self.client.update_smart_contract, smart_contract_id="some_id", disable_schedule=[])
         self.assertRaises(ValueError, self.client.update_smart_contract, smart_contract_id="some_id", execution_order="asdasd")
 
     def test_update_smart_contract_calls_put_no_env(self, mock_creds, mock_request):
@@ -426,6 +427,11 @@ class TestClientMehods(unittest.TestCase):
         self.client = dragonchain_sdk.create_client()
         self.client.update_smart_contract(smart_contract_id="some_id", registry_credentials="auth")
         self.client.request.put.assert_called_once_with("/v1/contract/some_id", {"version": "3", "auth": "auth"})
+
+    def test_update_smart_contract_calls_put_with_disable_schedule(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.update_smart_contract(smart_contract_id="some_id", disable_schedule=True)
+        self.client.request.put.assert_called_once_with("/v1/contract/some_id", {"version": "3", "disable_schedule": True})
 
     def test_delete_smart_contract_raises_type_error(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()

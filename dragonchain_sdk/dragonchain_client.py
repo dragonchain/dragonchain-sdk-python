@@ -194,6 +194,7 @@ class Client(object):
         schedule_interval_in_seconds: Optional[int] = None,
         cron_expression: Optional[str] = None,
         registry_credentials: Optional[str] = None,
+        disable_schedule: Optional[bool] = None,
     ) -> "request_response":
         """Update an existing smart contract. The smart_contract_id and at least one optional parameter must be supplied.
 
@@ -209,6 +210,7 @@ class Client(object):
             schedule_interval_in_seconds (int, optional): The seconds of scheduled execution in seconds
             cron_expression (str, optional): The rate of scheduled execution specified as a cron
             registry_credentials (str, optional): basic-auth for pulling docker images, base64 encoded (e.g. username:password)
+            disable_schedule (bool, optional): Set True to remove the existing schedule_interval_in_seconds or cron_expression from the contract
 
         Raises:
             TypeError: with bad parameter types
@@ -240,6 +242,8 @@ class Client(object):
             raise TypeError('Parameter "cron_expression" must be of type str.')
         if registry_credentials is not None and not isinstance(registry_credentials, str):
             raise TypeError('Parameter "registry_credentials" must be of type str.')
+        if disable_schedule is not None and not isinstance(disable_schedule, bool):
+            raise TypeError('Parameter "disable_schedule" must be of type bool.')
 
         body = cast(Dict[str, Any], {"version": "3"})
         if image:
@@ -264,6 +268,8 @@ class Client(object):
             body["cron"] = cron_expression
         if registry_credentials:
             body["auth"] = registry_credentials
+        if disable_schedule:
+            body["disable_schedule"] = True
 
         return self.request.put("/v1/contract/{}".format(smart_contract_id), body)
 
