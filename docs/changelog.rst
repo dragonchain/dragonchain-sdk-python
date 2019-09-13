@@ -39,6 +39,8 @@ Documentation:
   * Added docs for migrating from v3 to v4
 Development:
   * Modify integration test suite to integrate with new/modified endpoints
+Packaging:
+  * Update packaged metadata to indicate supported OS and stable/typed
 
 3.3.0
 -----

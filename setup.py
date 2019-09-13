@@ -54,9 +54,12 @@ setuptools.setup(
     extras_require={"aio": ["aiohttp>=3.5.0"]},
     license="Apache License 2.0",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
+        "Operating System :: POSIX",
+        "Operating System :: MacOS :: MacOS X",
+        "Operating System :: Microsoft :: Windows",
         "Natural Language :: English",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
@@ -67,10 +70,11 @@ setuptools.setup(
         "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
+        "Typing :: Typed"
     ],
     project_urls={
         "Documentation": "https://python-sdk-docs.dragonchain.com/latest/",
         "Source": "https://github.com/dragonchain/dragonchain-sdk-python",
-        "Tracker": "https://github.com/dragonchain/dragonchain-sdk-python/issues",
+        "Bug Tracker": "https://github.com/dragonchain/dragonchain-sdk-python/issues",
     },
 )
