@@ -70,7 +70,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
-        "Typing :: Typed"
+        "Typing :: Typed",
     ],
     project_urls={
         "Documentation": "https://python-sdk-docs.dragonchain.com/latest/",
