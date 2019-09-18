@@ -35,6 +35,7 @@ Features:
   * Support optionally fetching ids only (not entire documents) for querying
   * Support list smart contracts
   * Support disable schedule for ``update_smart_contract``
+  * Support new smart contract logs endpoint
 Documentation:
   * Added docs for migrating from v3 to v4
 Development:

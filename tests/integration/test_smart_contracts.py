@@ -228,6 +228,41 @@ class TestSmartContracts(unittest.TestCase):
         self.assertEqual(secrets_query["response"]["results"][0]["header"]["invoker"], secrets_transaction["response"]["transaction_id"])
         time.sleep(10)
 
+    # SMART CONTRACT LOGS #
+
+    def test_get_contract_logs_with_contract_id(self):
+        response = self.client.get_smart_contract_logs(smart_contract_id=SMART_CONTRACT_ARGS_ID)
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200)
+        jsonschema.validate(response.get("response"), schema.smart_contract_logs_schema)
+        self.assertGreater(len(response.get("response")["logs"]), 0)
+
+    def test_get_contract_logs_with_contract_id_tail_and_since(self):
+        response = self.client.get_smart_contract_logs(smart_contract_id=SMART_CONTRACT_ARGS_ID, tail=100, since="2019-09-16T23:10:04.000Z")
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200)
+        jsonschema.validate(response.get("response"), schema.smart_contract_logs_schema)
+        self.assertGreater(len(response.get("response")["logs"]), 0)
+
+    def test_get_contract_logs_with_invalid_contract_id_throws_not_found(self):
+        response = self.client.get_smart_contract_logs(smart_contract_id="The real banana")
+        self.assertFalse(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 404)
+
+    def test_get_contract_logs_with_tail_1_returns_1(self):
+        response = self.client.get_smart_contract_logs(smart_contract_id=SMART_CONTRACT_ARGS_ID, tail=1)
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200)
+        jsonschema.validate(response.get("response"), schema.smart_contract_logs_schema)
+        self.assertEqual(len(response.get("response")["logs"]), 1)
+
+    def test_get_contract_logs_with_since_in_future_returns_none(self):
+        response = self.client.get_smart_contract_logs(smart_contract_id=SMART_CONTRACT_ARGS_ID, since="8000-09-16T23:10:04.000Z")
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200)
+        jsonschema.validate(response.get("response"), schema.smart_contract_logs_schema)
+        self.assertEqual(len(response.get("response")["logs"]), 0)
+
     # SMART CONTRACT HEAP #
 
     def test_get_smart_contract_object_by_prefix_key(self):

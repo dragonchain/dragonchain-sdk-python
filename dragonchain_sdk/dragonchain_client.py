@@ -98,7 +98,32 @@ class Client(object):
         elif transaction_type:
             return self.request.get("/v1/contract/txn_type/{}".format(transaction_type))
         else:
-            raise TypeError('At least one of "smart_contract_id" or "transaction_type" must be specified')
+            raise ValueError('At least one of "smart_contract_id" or "transaction_type" must be specified')
+
+    def get_smart_contract_logs(self, smart_contract_id: str, tail: Optional[int] = 100, since: Optional[str] = None) -> "request_response":
+        """Perform a query on a chain's smart contracts logs
+
+        Args:
+            smart_contract_id (str): Id of the contract to get
+            tail (int, optional): The number of logs to return
+            since (str, optional): rfc3339 date string, returns all logs since this date string
+
+        Raises:
+            TypeError: with bad parameter types
+
+        Returns:
+            The contract returned from the request
+        """
+        if not smart_contract_id:
+            raise ValueError('Parameter "smart_contract_id" must be specified')
+        if not isinstance(smart_contract_id, str):
+            raise TypeError('Parameter "smart_contract_id" must be of type str.')
+        if tail is not None and not isinstance(tail, int):
+            raise TypeError('Parameter "tail" must be of type int.')
+        if since is not None and not isinstance(since, str):
+            raise TypeError('Parameter "since" must be of type str.')
+
+        return self.request.get("/v1/contract/{}/logs".format(smart_contract_id))
 
     def create_smart_contract(  # noqa: C901
         self,

@@ -13,6 +13,27 @@ _uuidv4_regex = "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[a-fA-F0-9]{4}-[
 _digits_only_string_regex = "^[0-9]+$"
 _ethereum_address_regex = "^0x[a-fA-F0-9]{40}$"
 
+smart_contract_logs_schema = {
+    "type": "object",
+    "properties": {
+        "logs": {
+            "type": "array",
+            "items": {
+                "properties": {
+                    "name": {"type": "string"},
+                    "instance": {"type": "string"},
+                    "timestamp": {"type": "string"},
+                    "text": {"type": "string"},
+                },
+                "additionalProperties": False,
+                "required": ["name", "instance", "timestamp", "text"],
+            },
+        }
+    },
+    "required": ["logs"],
+    "additionalProperties": False,
+}
+
 list_transaction_type_schema = {
     "type": "object",
     "properties": {

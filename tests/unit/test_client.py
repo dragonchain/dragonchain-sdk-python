@@ -86,8 +86,8 @@ class TestClientInitialization(unittest.TestCase):
 
 @patch("dragonchain_sdk.dragonchain_client.request")
 @patch("dragonchain_sdk.dragonchain_client.credentials")
-class TestClientMehods(unittest.TestCase):
-    def test__validate_and_build_custom_index_fields_array_trims_unnecessary_fields(self, mock_creds, mock_request):
+class TestClientMethods(unittest.TestCase):
+    def test_validate_and_build_custom_index_fields_array_trims_unnecessary_fields(self, mock_creds, mock_request):
         my_index = {"type": "text", "path": "a.b", "field_name": "myField", "options": {"not_needed": "thing"}, "unnecessary": "stuff"}
         result = dragonchain_client._validate_and_build_custom_index_fields_array([my_index])
         # Remove unnecessary fields and check thats what the validation returned
@@ -95,7 +95,7 @@ class TestClientMehods(unittest.TestCase):
         del my_index["options"]["not_needed"]
         self.assertEqual(result[0], my_index)
 
-    def test__validate_and_build_custom_index_fields_array_extracts_necessary_option_fields(self, mock_creds, mock_request):
+    def test_validate_and_build_custom_index_fields_array_extracts_necessary_option_fields(self, mock_creds, mock_request):
         my_index = {"type": "text", "path": "a.b", "field_name": "myField", "options": {}}
         self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
         my_index["options"] = {"weight": 0.0, "no_stem": True, "sortable": False}
@@ -113,7 +113,7 @@ class TestClientMehods(unittest.TestCase):
         my_index["options"] = {"no_index": True}
         self.assertEqual(dragonchain_client._validate_and_build_custom_index_fields_array([my_index])[0], my_index)
 
-    def test__validate_and_build_custom_index_fields_array_checks_root_fields(self, mock_creds, mock_request):
+    def test_validate_and_build_custom_index_fields_array_checks_root_fields(self, mock_creds, mock_request):
         my_index = {"type": "text", "path": "a.b", "field_name": "myField", "options": 123}
         self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, ["not_valid"])
         self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
@@ -124,7 +124,7 @@ class TestClientMehods(unittest.TestCase):
         my_index["path"] = 123
         self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
 
-    def test__validate_and_build_custom_index_fields_array_checks_option_types(self, mock_creds, mock_request):
+    def test_validate_and_build_custom_index_fields_array_checks_option_types(self, mock_creds, mock_request):
         my_index = {
             "type": "text",
             "path": "a.b",
@@ -141,14 +141,14 @@ class TestClientMehods(unittest.TestCase):
         my_index["options"]["separator"] = 123
         self.assertRaises(TypeError, dragonchain_client._validate_and_build_custom_index_fields_array, [my_index])
 
-    def test__build_transaction_dict_raises_type_error(self, mock_creds, mock_request):
+    def test_build_transaction_dict_raises_type_error(self, mock_creds, mock_request):
         self.assertRaises(TypeError, dragonchain_client._build_transaction_dict, {}, {"fake": "payload"}, 'Tag:"value"')
         self.assertRaises(TypeError, dragonchain_client._build_transaction_dict, "FAKEtransaction", [], 'Tag:"value"')
         self.assertRaises(TypeError, dragonchain_client._build_transaction_dict, "FAKEtransaction", {"fake": "payload"}, {})
         mock_creds.assert_not_called()
         mock_request.assert_not_called()
 
-    def test__build_transaction_dict_returns_dict(self, mock_creds, mock_request):
+    def test_build_transaction_dict_returns_dict(self, mock_creds, mock_request):
         self.assertEqual(
             dragonchain_client._build_transaction_dict("FAKEtransaction", {}, 'Tag:"value"'),
             {"version": "1", "txn_type": "FAKEtransaction", "payload": {}, "tag": 'Tag:"value"'},
@@ -156,7 +156,7 @@ class TestClientMehods(unittest.TestCase):
         mock_creds.assert_not_called()
         mock_request.assert_not_called()
 
-    def test__build_transaction_dict_returns_dict_no_tag(self, mock_creds, mock_request):
+    def test_build_transaction_dict_returns_dict_no_tag(self, mock_creds, mock_request):
         self.assertEqual(
             dragonchain_client._build_transaction_dict("FAKEtransaction", {}), {"version": "1", "txn_type": "FAKEtransaction", "payload": {}}
         )
@@ -179,6 +179,21 @@ class TestClientMehods(unittest.TestCase):
         path = os.path.join(os.path.abspath(os.sep), "var", "openfaas", "secrets", "sc-bogusSCID-mySecret")
         mock_open.assert_called_once_with(path, "r")
 
+    def test_get_smart_contract_logs_calls_get(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.get_smart_contract_logs("my-id")
+        self.client.request.get.assert_called_once_with("/v1/contract/my-id/logs")
+
+    def test_get_smart_contract_logs_throws_type_error(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.get_smart_contract_logs, 1234)
+        self.assertRaises(TypeError, self.client.get_smart_contract_logs, "my-id", tail="bad type")
+        self.assertRaises(TypeError, self.client.get_smart_contract_logs, "my-id", since=1)
+
+    def test_get_smart_contract_logs_throws_value_error(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(ValueError, self.client.get_smart_contract_logs, None)
+
     def test_get_status_calls_get(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.get_status()
@@ -193,8 +208,11 @@ class TestClientMehods(unittest.TestCase):
         self.client = dragonchain_sdk.create_client()
         self.assertRaises(TypeError, self.client.get_smart_contract, 1234, "str")
         self.assertRaises(TypeError, self.client.get_smart_contract, "str", 1234)
-        self.assertRaises(TypeError, self.client.get_smart_contract)
         self.assertRaises(TypeError, self.client.get_smart_contract, "str", "str")
+
+    def test_get_smart_contract_throws_value_error(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(ValueError, self.client.get_smart_contract)
 
     def test_get_smart_contract_with_id_calls_get(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
