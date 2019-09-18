@@ -110,20 +110,26 @@ class Client(object):
 
         Raises:
             TypeError: with bad parameter types
+            ValueError: when no smart_contract_id provided
 
         Returns:
             The contract returned from the request
         """
+        query_dict = cast(Dict[str, Any], {})
         if not smart_contract_id:
             raise ValueError('Parameter "smart_contract_id" must be specified')
         if not isinstance(smart_contract_id, str):
             raise TypeError('Parameter "smart_contract_id" must be of type str.')
-        if tail is not None and not isinstance(tail, int):
-            raise TypeError('Parameter "tail" must be of type int.')
-        if since is not None and not isinstance(since, str):
-            raise TypeError('Parameter "since" must be of type str.')
+        if tail is not None:
+            if not isinstance(tail, int):
+                raise TypeError('Parameter "tail" must be of type int.')
+            query_dict["tail"] = tail
+        if since is not None:
+            if not isinstance(since, str):
+                raise TypeError('Parameter "since" must be of type str.')
+            query_dict["since"] = since
 
-        return self.request.get("/v1/contract/{}/logs".format(smart_contract_id))
+        return self.request.get("/v1/contract/{}/logs{}".format(smart_contract_id, self.request.generate_query_string(query_dict)))
 
     def create_smart_contract(  # noqa: C901
         self,
