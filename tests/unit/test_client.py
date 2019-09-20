@@ -182,7 +182,7 @@ class TestClientMethods(unittest.TestCase):
     def test_get_smart_contract_logs_calls_get(self, mock_creds, mock_request):
         mock_request.Request.return_value.generate_query_string.return_value = ""
         self.client = dragonchain_sdk.create_client()
-        self.client.get_smart_contract_logs("my-id")
+        self.client.get_smart_contract_logs("my-id", tail=None)
         self.client.request.get.assert_called_once_with("/v1/contract/my-id/logs")
 
     def test_get_smart_contract_logs_calls_get_with_parameters(self, mock_creds, mock_request):
