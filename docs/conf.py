@@ -16,7 +16,7 @@ import sys
 def get_version():
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
     init = open(os.path.join(root, "dragonchain_sdk", "__init__.py")).read()
-    return re.compile(r"""__version__ = ['"]([0-9.]+)['"]""").search(init).group(1)
+    return re.compile(r"""__version__ = ['"]([0-9.]+.*)['"]""").search(init).group(1)
 
 
 # -- Path setup --------------------------------------------------------------

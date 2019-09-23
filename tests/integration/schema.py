@@ -13,6 +13,27 @@ _uuidv4_regex = "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[a-fA-F0-9]{4}-[
 _digits_only_string_regex = "^[0-9]+$"
 _ethereum_address_regex = "^0x[a-fA-F0-9]{40}$"
 
+smart_contract_logs_schema = {
+    "type": "object",
+    "properties": {
+        "logs": {
+            "type": "array",
+            "items": {
+                "properties": {
+                    "name": {"type": "string"},
+                    "instance": {"type": "string"},
+                    "timestamp": {"type": "string"},
+                    "text": {"type": "string"},
+                },
+                "additionalProperties": False,
+                "required": ["name", "instance", "timestamp", "text"],
+            },
+        }
+    },
+    "required": ["logs"],
+    "additionalProperties": False,
+}
+
 list_transaction_type_schema = {
     "type": "object",
     "properties": {
@@ -27,14 +48,20 @@ list_transaction_type_schema = {
                         "type": "array",
                         "items": {
                             "type": "object",
-                            "properties": {"key": {"type": "string"}, "path": {"type": "string"}},
-                            "required": ["key", "path"],
+                            "properties": {
+                                "field_name": {"type": "string"},
+                                "path": {"type": "string"},
+                                "type": {"type": "string"},
+                                "options": {"type": "object"},
+                            },
+                            "required": ["field_name", "path", "type"],
                             "additionalProperties": False,
                         },
                     },
-                    "contract_id": {"type": ["string", "boolean"]},
+                    "contract_id": {"type": "string"},
+                    "active_since_block": {"type": "string"},
                 },
-                "required": ["version", "txn_type", "custom_indexes", "contract_id"],
+                "required": ["version", "txn_type", "custom_indexes", "contract_id", "active_since_block"],
                 "additionalProperties": False,
             },
         }
@@ -264,6 +291,13 @@ query_block_schema = {
     "additionalProperties": False,
 }
 
+query_ids_only = {
+    "type": "object",
+    "properties": {"total": {"type": "integer"}, "results": {"type": "array", "items": {"type": "string"}}},
+    "required": ["total", "results"],
+    "additionalProperties": False,
+}
+
 smart_contract_at_rest_schema = {
     "type": "object",
     "properties": {
@@ -308,9 +342,11 @@ smart_contract_at_rest_schema = {
     "additionalProperties": False,
 }
 
-query_smart_contract_schema = {
+smart_contracts_list_schema = {
     "type": "object",
-    "properties": {"results": {"type": "array", "items": smart_contract_at_rest_schema}, "total": {"type": "integer"}},
+    "properties": {"smart_contracts": {"type": "array", "items": smart_contract_at_rest_schema}},
+    "required": ["smart_contracts"],
+    "additionalProperties": False,
 }
 
 l2_verifications_schema = {

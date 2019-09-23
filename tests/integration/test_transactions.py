@@ -19,6 +19,7 @@ from tests.integration import schema
 import dragonchain_sdk
 
 TEST_TXN_TYPE = "testingType1"
+QUERY_TXN_TYPE = "queryTesting"
 EMPTY_STRING_TXN_ID = None
 EMTPY_OBJECT_TXN_ID = None
 STRING_CONTENT = "some content"
@@ -29,6 +30,8 @@ TAG_TXN_ID = None
 TAG_CONTENT = "someTag"
 BULK_TXN_ID = None
 BULK_TXN_CONTENT = "valid txn"
+LOW_TXN_ID = None
+HIGH_TXN_ID = None
 
 
 class TestTransactions(unittest.TestCase):
@@ -38,6 +41,14 @@ class TestTransactions(unittest.TestCase):
     def set_up_transaction_types(self):
         try:
             self.client.create_transaction_type(TEST_TXN_TYPE)
+            self.client.create_transaction_type(
+                QUERY_TXN_TYPE,
+                [
+                    {"path": "test.text", "field_name": "query_text", "type": "text", "options": {"sortable": True}},
+                    {"path": "test.tag", "field_name": "query_tag", "type": "tag"},
+                    {"path": "test.num", "field_name": "query_num", "type": "number", "options": {"sortable": True}},
+                ],
+            )
         except Exception:
             pass
 
@@ -176,9 +187,21 @@ class TestTransactions(unittest.TestCase):
         self.assertEqual(response["response"]["error"]["type"], "VALIDATION_ERROR", response)
 
     def wait_for_blocks(self):
-        time.sleep(15)
+        time.sleep(8)
 
     # GET #
+
+    def test_get_transaction_returns_stub_if_not_in_block(self):
+        txn_id = self.client.create_transaction(TEST_TXN_TYPE, "")["response"]["transaction_id"]
+        response = self.client.get_transaction(txn_id)
+        self.assertEqual(
+            response,
+            {
+                "status": 200,
+                "ok": True,
+                "response": {"header": {"txn_id": txn_id}, "message": "This transaction is waiting to be included in a block", "status": "pending"},
+            },
+        )
 
     def test_get_transaction_with_empty_string_payload(self):
         response = self.client.get_transaction(EMPTY_STRING_TXN_ID)
@@ -251,76 +274,233 @@ class TestTransactions(unittest.TestCase):
 
     # QUERY #
 
-    def test_query_transactions_works_with_no_parameters(self):
-        response = self.client.query_transactions()
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.query_transaction_schema)
+    def test_query_transaction_returns_stub_if_not_in_block(self):
+        txn_id = self.client.create_transaction(TEST_TXN_TYPE, "", tag="somethingUnique")["response"]["transaction_id"]
+        response = self.client.query_transactions(TEST_TXN_TYPE, "somethingUnique")
+        self.assertEqual(response.get("status"), 200)
+        self.assertTrue(response.get("ok"))
+        self.assertEqual(
+            response["response"]["results"][0],
+            {"header": {"txn_id": txn_id}, "message": "This transaction is waiting to be included in a block", "status": "pending"},
+        )
 
-    def test_query_transactions_works_with_limit(self):
-        response = self.client.query_transactions(limit=2)
-        self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.query_transaction_schema)
-        self.assertEqual(2, len(response["response"]["results"]))
+    def set_up_queryable_transactions(self):
+        global LOW_TXN_ID
+        global HIGH_TXN_ID
+        LOW_TXN_ID = self.client.create_transaction(
+            QUERY_TXN_TYPE, tag="unique1 content", payload={"test": {"text": "a sortable text1 field", "tag": "someTag1", "num": 1234}}
+        )["response"]["transaction_id"]
+        time.sleep(8)
+        HIGH_TXN_ID = self.client.create_transaction(
+            QUERY_TXN_TYPE, tag="unique2 content", payload={"test": {"text": "a sortable text2 field", "tag": "someTag2", "num": 4321}}
+        )["response"]["transaction_id"]
 
-    def test_query_transactions_works_with_offset(self):
-        # We'll check that these results give valid responses and aren't identical
-        response1 = self.client.query_transactions(offset=0, limit=1)
-        response2 = self.client.query_transactions(offset=3, limit=1)
-        self.assertTrue(response1.get("ok"), response1)
+    def test_query_transactions_generic(self):
+        response = self.client.query_transactions(QUERY_TXN_TYPE, "*")
+        self.assertEqual(response.get("status"), 200)
+        self.assertTrue(response.get("ok"))
+        jsonschema.validate(response.get("response"), schema.query_transaction_schema)
+        self.assertEqual(response["response"]["total"], 2)
+
+    def test_query_transactions_by_timestamp(self):
+        # Get all transactions timestamp below now, sorted by timestamp
+        response1 = self.client.query_transactions(
+            QUERY_TXN_TYPE, "@timestamp:[-inf {}]".format(time.time()), sort_by="timestamp", sort_ascending=True
+        )
+        response2 = self.client.query_transactions(
+            QUERY_TXN_TYPE, "@timestamp:[-inf {}]".format(time.time()), sort_by="timestamp", sort_ascending=False
+        )
+        response3 = self.client.query_transactions(QUERY_TXN_TYPE, "@timestamp:[{} +inf]".format(time.time()))  # Should not return any results
         self.assertEqual(response1.get("status"), 200, response1)
-        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
-        self.assertTrue(response2.get("ok"), response2)
         self.assertEqual(response2.get("status"), 200, response2)
-        jsonschema.validate(response2.get("response"), schema.query_transaction_schema)
-        self.assertNotEqual(response1["response"]["results"], response2["response"]["results"])
-
-    def test_query_transactions_with_sorting(self):
-        response1 = self.client.query_transactions(sort="timestamp:desc", limit=5)
-        response2 = self.client.query_transactions(sort="block_id:desc", limit=5)
+        self.assertEqual(response2.get("status"), 200, response3)
         self.assertTrue(response1.get("ok"), response1)
-        self.assertEqual(response1.get("status"), 200, response1)
-        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
         self.assertTrue(response2.get("ok"), response2)
-        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertTrue(response2.get("ok"), response3)
+        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
         jsonschema.validate(response2.get("response"), schema.query_transaction_schema)
-        timestamp_list = []
-        block_id_list = []
-        for transaction in response1["response"]["results"]:
-            timestamp_list.append(transaction["header"]["timestamp"])
-        for transaction in response2["response"]["results"]:
-            block_id_list.append(transaction["header"]["block_id"])
-        # Ensure our sorting worked by checking that the timestamps and block_ids are in ascending ascending order (sorted)
-        self.assertEqual(timestamp_list, sorted(timestamp_list)[::-1])
-        self.assertEqual(block_id_list, sorted(block_id_list)[::-1])
+        jsonschema.validate(response3.get("response"), schema.query_transaction_schema)
+        # Check we got the correct results
+        self.assertEqual(response1["response"]["total"], 2)
+        self.assertEqual(response2["response"]["total"], 2)
+        self.assertEqual(response3["response"]["total"], 0)
+        # Check sorted order is correct
+        self.assertEqual(response1["response"]["results"][0]["header"]["txn_id"], LOW_TXN_ID, "First result in ascending query was not sorted")
+        self.assertEqual(response1["response"]["results"][1]["header"]["txn_id"], HIGH_TXN_ID, "First result in ascending query was not sorted")
+        self.assertEqual(response2["response"]["results"][0]["header"]["txn_id"], HIGH_TXN_ID, "First result in descending query was not sorted")
+        self.assertEqual(response2["response"]["results"][1]["header"]["txn_id"], LOW_TXN_ID, "First result in descending query was not sorted")
 
-    def test_query_transactions_with_lucene_query(self):
-        response = self.client.query_transactions(lucene_query='tag:"{}"'.format(TAG_CONTENT))
-        self.assertTrue(response.get("ok"), response)
+    def test_query_transactions_by_block_id(self):
+        current_block = int((time.time() - 1432238220) / 5)
+        # Get all transactions timestamp below now, sorted by timestamp
+        response1 = self.client.query_transactions(
+            QUERY_TXN_TYPE, "@block_id:[-inf {}]".format(current_block), sort_by="block_id", sort_ascending=True
+        )
+        response2 = self.client.query_transactions(
+            QUERY_TXN_TYPE, "@block_id:[-inf {}]".format(current_block), sort_by="block_id", sort_ascending=False
+        )
+        response3 = self.client.query_transactions(QUERY_TXN_TYPE, "@block_id:[({} +inf]".format(current_block))  # Should not return any results
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertEqual(response2.get("status"), 200, response3)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        self.assertTrue(response2.get("ok"), response3)
+        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response2.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response3.get("response"), schema.query_transaction_schema)
+        # Check we got the correct results
+        self.assertEqual(response1["response"]["total"], 2)
+        self.assertEqual(response2["response"]["total"], 2)
+        self.assertEqual(response3["response"]["total"], 0)
+        # Check sorted order is correct
+        self.assertEqual(response1["response"]["results"][0]["header"]["txn_id"], LOW_TXN_ID, "First result in ascending query was not sorted")
+        self.assertEqual(response1["response"]["results"][1]["header"]["txn_id"], HIGH_TXN_ID, "First result in ascending query was not sorted")
+        self.assertEqual(response2["response"]["results"][0]["header"]["txn_id"], HIGH_TXN_ID, "First result in descending query was not sorted")
+        self.assertEqual(response2["response"]["results"][1]["header"]["txn_id"], LOW_TXN_ID, "First result in descending query was not sorted")
+
+    def test_query_transactions_by_general_tag(self):
+        response1 = self.client.query_transactions(QUERY_TXN_TYPE, "unique1")
+        response2 = self.client.query_transactions(QUERY_TXN_TYPE, "unique2")
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response2.get("response"), schema.query_transaction_schema)
+        # Check we got the correct results
+        self.assertEqual(response1["response"]["total"], 1)
+        self.assertEqual(response2["response"]["total"], 1)
+        # Check sorted order is correct
+        self.assertEqual(response1["response"]["results"][0]["header"]["txn_id"], LOW_TXN_ID, "Wrong result for tag query 1")
+        self.assertEqual(response2["response"]["results"][0]["header"]["txn_id"], HIGH_TXN_ID, "Wrong result for tag query 2")
+
+    def test_query_transactions_verbatim(self):
+        response1 = self.client.query_transactions(QUERY_TXN_TYPE, "contently", verbatim=False)  # Stems to match "content" from the tag
+        response2 = self.client.query_transactions(QUERY_TXN_TYPE, "contently", verbatim=True)
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response2.get("response"), schema.query_transaction_schema)
+        # Check that switching verbatim causes results to change
+        self.assertEqual(response1["response"]["total"], 2)
+        self.assertEqual(response2["response"]["total"], 0)
+
+    def test_query_transactions_ids_only(self):
+        response = self.client.query_transactions(QUERY_TXN_TYPE, "*", ids_only=True)
         self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.query_transaction_schema)
-        # Make sure we got results
-        self.assertGreater(len(response["response"]["results"]), 0)
-        for transaction in response["response"]["results"]:
-            # Check that it's the correct result
-            self.assertEqual(TAG_CONTENT, transaction["header"]["tag"], transaction)
-
-    def test_query_transactions_with_no_result_lucene_query(self):
-        response = self.client.query_transactions(lucene_query='tag:"thisdoesntexistinatag"')
         self.assertTrue(response.get("ok"), response)
-        self.assertEqual(response.get("status"), 200, response)
-        jsonschema.validate(response.get("response"), schema.query_transaction_schema)
-        self.assertEqual(0, response["response"]["total"])
-        # Make sure we got exactly 0 result
-        self.assertEqual(len(response["response"]["results"]), 0)
+        jsonschema.validate(response.get("response"), schema.query_ids_only)
+        self.assertEqual(response["response"]["total"], 2)
+        self.assertIn(LOW_TXN_ID, response["response"]["results"])
+        self.assertIn(HIGH_TXN_ID, response["response"]["results"])
 
-    # TODO: Add more robust lucene query checking
+    def test_query_transactions_paging(self):
+        # For testing offset and limit parameters in a query
+        response1 = self.client.query_transactions(QUERY_TXN_TYPE, "*", limit=0)
+        response2 = self.client.query_transactions(QUERY_TXN_TYPE, "*", offset=0, limit=1, ids_only=True)
+        response3 = self.client.query_transactions(QUERY_TXN_TYPE, "*", offset=1, limit=1, ids_only=True)
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertEqual(response3.get("status"), 200, response3)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        self.assertTrue(response3.get("ok"), response3)
+        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response2.get("response"), schema.query_ids_only)
+        jsonschema.validate(response3.get("response"), schema.query_ids_only)
+        # Check we got the correct totals
+        self.assertEqual(response1["response"]["total"], 2)
+        self.assertEqual(response2["response"]["total"], 2)
+        self.assertEqual(response3["response"]["total"], 2)
+        # Check that limit 0 returned an empty array
+        self.assertEqual(response1["response"]["results"], [], "Limit 0 returned actual results")
+        # Ensure both our results our transactions are in the combined paginated results
+        self.assertEqual(len(response2["response"]["results"]), 1)
+        self.assertEqual(len(response3["response"]["results"]), 1)
+        combined_result = response2["response"]["results"] + response3["response"]["results"]
+        self.assertIn(LOW_TXN_ID, combined_result)
+        self.assertIn(HIGH_TXN_ID, combined_result)
 
-    # TODO: Add tests for bad queries
+    def test_query_transactions_by_custom_text(self):
+        # Should return both transactions
+        response1 = self.client.query_transactions(QUERY_TXN_TYPE, "@query_text:(a sortable)", sort_by="query_text", sort_ascending=False)
+        # Should return only LOW_TXN_ID txn
+        response2 = self.client.query_transactions(QUERY_TXN_TYPE, "text1")
+        # Should return only HIGH_TXN_ID txn
+        response3 = self.client.query_transactions(QUERY_TXN_TYPE, "text2")
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertEqual(response3.get("status"), 200, response3)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        self.assertTrue(response3.get("ok"), response3)
+        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response2.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response3.get("response"), schema.query_transaction_schema)
+        # Check we got the correct results
+        self.assertEqual(response1["response"]["total"], 2)
+        self.assertEqual(response2["response"]["total"], 1)
+        self.assertEqual(response3["response"]["total"], 1)
+        # Check sorted order is correct
+        self.assertEqual(response1["response"]["results"][0]["header"]["txn_id"], HIGH_TXN_ID, "First result in ascending query was not sorted")
+        self.assertEqual(response1["response"]["results"][1]["header"]["txn_id"], LOW_TXN_ID, "First result in ascending query was not sorted")
+        self.assertEqual(response2["response"]["results"][0]["header"]["txn_id"], LOW_TXN_ID, "First result in descending query was not sorted")
+        self.assertEqual(response3["response"]["results"][0]["header"]["txn_id"], HIGH_TXN_ID, "First result in descending query was not sorted")
+
+    def test_query_transactions_by_custom_tag(self):
+        response1 = self.client.query_transactions(QUERY_TXN_TYPE, "@query_tag:{someTag1}")
+        response2 = self.client.query_transactions(QUERY_TXN_TYPE, "@query_tag:{someTag2}")
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response2.get("response"), schema.query_transaction_schema)
+        # Check we got the correct results
+        self.assertEqual(response1["response"]["total"], 1)
+        self.assertEqual(response2["response"]["total"], 1)
+        # Check sorted order is correct
+        self.assertEqual(response1["response"]["results"][0]["header"]["txn_id"], LOW_TXN_ID, "First result in ascending query was not sorted")
+        self.assertEqual(response2["response"]["results"][0]["header"]["txn_id"], HIGH_TXN_ID, "First result in ascending query was not sorted")
+
+    def test_query_transactions_by_custom_num(self):
+        response1 = self.client.query_transactions(QUERY_TXN_TYPE, "@query_num:[-inf +inf]", sort_by="query_num", sort_ascending=True)
+        response2 = self.client.query_transactions(QUERY_TXN_TYPE, "@query_num:[-inf +inf]", sort_by="query_num", sort_ascending=False)
+        self.assertEqual(response1.get("status"), 200, response1)
+        self.assertEqual(response2.get("status"), 200, response2)
+        self.assertTrue(response1.get("ok"), response1)
+        self.assertTrue(response2.get("ok"), response2)
+        jsonschema.validate(response1.get("response"), schema.query_transaction_schema)
+        jsonschema.validate(response2.get("response"), schema.query_transaction_schema)
+        # Check we got the correct results
+        self.assertEqual(response1["response"]["total"], 2)
+        self.assertEqual(response2["response"]["total"], 2)
+        # Check sorted order is correct
+        self.assertEqual(response1["response"]["results"][0]["header"]["txn_id"], LOW_TXN_ID, "First result in ascending query was not sorted")
+        self.assertEqual(response2["response"]["results"][0]["header"]["txn_id"], HIGH_TXN_ID, "First result in ascending query was not sorted")
+
+    def test_query_transactions_raises_400_with_bad_query(self):
+        response = self.client.query_transactions(QUERY_TXN_TYPE, "invalid-")
+        expected_response = {
+            "status": 400,
+            "ok": False,
+            "response": {"error": {"type": "BAD_REQUEST", "details": "Syntax error at offset 7 near 'invalid'"}},
+        }
+        self.assertEqual(response, expected_response)
+
+    def test_query_transactions_raises_400_with_bad_transaction_type(self):
+        response = self.client.query_transactions("invalidbananatype", "*")
+        expected_response = {"status": 400, "ok": False, "response": {"error": {"type": "BAD_REQUEST", "details": "Invalid transaction type"}}}
+        self.assertEqual(response, expected_response)
+
+    # CLEANUP #
 
     def clean_up_transaction_types(self):
         self.client.delete_transaction_type(TEST_TXN_TYPE)
+        self.client.delete_transaction_type(QUERY_TXN_TYPE)
 
 
 def suite():
@@ -338,7 +518,9 @@ def suite():
     suite.addTest(TestTransactions("test_create_bulk_transactions_with_some_invalid_transactions"))
     suite.addTest(TestTransactions("test_create_bulk_transactions_with_all_nonexistant_transaction_types"))
     suite.addTest(TestTransactions("test_create_bulk_transactions_with_all_invalid_transactions"))
+    suite.addTest(TestTransactions("set_up_queryable_transactions"))
     suite.addTest(TestTransactions("wait_for_blocks"))
+    suite.addTest(TestTransactions("test_get_transaction_returns_stub_if_not_in_block"))
     suite.addTest(TestTransactions("test_get_transaction_with_empty_string_payload"))
     suite.addTest(TestTransactions("test_get_transaction_with_nonempty_string_payload"))
     suite.addTest(TestTransactions("test_get_transaction_with_empty_object_payload"))
@@ -346,12 +528,19 @@ def suite():
     suite.addTest(TestTransactions("test_get_transaction_with_tag"))
     suite.addTest(TestTransactions("test_get_transaction_from_bulk_submission"))
     suite.addTest(TestTransactions("test_get_transaction_fails_with_bad_id"))
-    suite.addTest(TestTransactions("test_query_transactions_works_with_no_parameters"))
-    suite.addTest(TestTransactions("test_query_transactions_works_with_limit"))
-    suite.addTest(TestTransactions("test_query_transactions_works_with_offset"))
-    suite.addTest(TestTransactions("test_query_transactions_with_sorting"))
-    suite.addTest(TestTransactions("test_query_transactions_with_lucene_query"))
-    suite.addTest(TestTransactions("test_query_transactions_with_no_result_lucene_query"))
+    suite.addTest(TestTransactions("test_query_transaction_returns_stub_if_not_in_block"))
+    suite.addTest(TestTransactions("test_query_transactions_generic"))
+    suite.addTest(TestTransactions("test_query_transactions_by_timestamp"))
+    suite.addTest(TestTransactions("test_query_transactions_by_block_id"))
+    suite.addTest(TestTransactions("test_query_transactions_by_general_tag"))
+    suite.addTest(TestTransactions("test_query_transactions_verbatim"))
+    suite.addTest(TestTransactions("test_query_transactions_ids_only"))
+    suite.addTest(TestTransactions("test_query_transactions_paging"))
+    suite.addTest(TestTransactions("test_query_transactions_by_custom_text"))
+    suite.addTest(TestTransactions("test_query_transactions_by_custom_tag"))
+    suite.addTest(TestTransactions("test_query_transactions_by_custom_num"))
+    suite.addTest(TestTransactions("test_query_transactions_raises_400_with_bad_query"))
+    suite.addTest(TestTransactions("test_query_transactions_raises_400_with_bad_transaction_type"))
     suite.addTest(TestTransactions("clean_up_transaction_types"))
     return suite
 

@@ -63,11 +63,15 @@ class TestMisc(unittest.TestCase):
 
     # First we have to find the block id of a block with verifications through level 5 to test
     def find_verified_block(self):
-        response = self.client.query_blocks(lucene_query="l5_verifications:1")
+        # Get the oldest block on the chain and check if it's verified
+        block_response = self.client.query_blocks("*", sort_by="block_id", sort_ascending=True, limit=1)
+        block_id = block_response["response"]["results"][0]["header"]["block_id"]
+        # Check that it has verifications
+        verifications_response = self.client.get_verifications(block_id, 5)
         # Ensure that we found results
-        self.assertGreater(response["response"]["total"], 0, "No block could be found with a level 5 verification")
+        self.assertGreater(len(verifications_response["response"]), 0, "No block with all verification levels found")
         global VERIFIED_BLOCK_ID
-        VERIFIED_BLOCK_ID = response["response"]["results"][0]["header"]["block_id"]
+        VERIFIED_BLOCK_ID = block_id
 
     def test_get_l2_verifications(self):
         self.assertIsNotNone(VERIFIED_BLOCK_ID, "No block with all verification levels found")

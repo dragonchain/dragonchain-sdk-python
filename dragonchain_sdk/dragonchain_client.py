@@ -11,7 +11,7 @@
 
 import os
 import logging
-from typing import cast, Any, Dict, Optional, Union, List, TYPE_CHECKING
+from typing import cast, Any, Dict, Optional, Union, List, Iterable, TYPE_CHECKING
 
 from dragonchain_sdk import request
 from dragonchain_sdk import credentials
@@ -19,7 +19,7 @@ from dragonchain_sdk import credentials
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from dragonchain_sdk.types import request_response, custom_index_type  # noqa: F401 used by typing
+    from dragonchain_sdk.types import request_response, custom_index_fields_type  # noqa: F401 used by typing
 
 
 class Client(object):
@@ -66,22 +66,13 @@ class Client(object):
         """
         return self.request.get("/v1/status")
 
-    def query_smart_contracts(
-        self, lucene_query: Optional[str] = None, sort: Optional[str] = None, offset: int = 0, limit: int = 10
-    ) -> "request_response":
-        """Perform a query on a chain's smart contracts
-
-        Args:
-            lucene_query (str, optional): Lucene query parameter (e.g.: ``is_serial:true``)
-            sort (str, optional): Sort syntax of 'field:direction' (e.g.: ``name:asc``)
-            offset (int, optional): Pagination offset of query (default 0)
-            limit (int, optional): Pagination limit (default 10)
+    def list_smart_contracts(self) -> "request_response":
+        """Get all smart contracts on a chain
 
         Returns:
-            The results of the query
+            A list of all the smart contracts on the chain
         """
-        query_params = self.request.get_lucene_query_params(lucene_query, sort, offset, limit)
-        return self.request.get("/v1/contract{}".format(query_params))
+        return self.request.get("/v1/contract")
 
     def get_smart_contract(self, smart_contract_id: Optional[str] = None, transaction_type: Optional[str] = None) -> "request_response":
         """Perform a query on a chain's smart contracts
@@ -107,9 +98,40 @@ class Client(object):
         elif transaction_type:
             return self.request.get("/v1/contract/txn_type/{}".format(transaction_type))
         else:
-            raise TypeError('At least one of "smart_contract_id" or "transaction_type" must be specified')
+            raise ValueError('At least one of "smart_contract_id" or "transaction_type" must be specified')
 
-    def create_smart_contract(
+    def get_smart_contract_logs(self, smart_contract_id: str, tail: Optional[int] = 100, since: Optional[str] = None) -> "request_response":
+        """Perform a query on a chain's smart contracts logs
+
+        Args:
+            smart_contract_id (str): Id of the contract to get
+            tail (int, optional): The number of logs to return
+            since (str, optional): rfc3339 date string, returns all logs since this date string
+
+        Raises:
+            TypeError: with bad parameter types
+            ValueError: when no smart_contract_id provided
+
+        Returns:
+            The contract returned from the request
+        """
+        query_dict = cast(Dict[str, Any], {})
+        if not smart_contract_id:
+            raise ValueError('Parameter "smart_contract_id" must be specified')
+        if not isinstance(smart_contract_id, str):
+            raise TypeError('Parameter "smart_contract_id" must be of type str.')
+        if tail is not None:
+            if not isinstance(tail, int):
+                raise TypeError('Parameter "tail" must be of type int.')
+            query_dict["tail"] = tail
+        if since is not None:
+            if not isinstance(since, str):
+                raise TypeError('Parameter "since" must be of type str.')
+            query_dict["since"] = since
+
+        return self.request.get("/v1/contract/{}/logs{}".format(smart_contract_id, self.request.generate_query_string(query_dict)))
+
+    def create_smart_contract(  # noqa: C901
         self,
         transaction_type: str,
         image: str,
@@ -121,6 +143,7 @@ class Client(object):
         schedule_interval_in_seconds: Optional[int] = None,
         cron_expression: Optional[str] = None,
         registry_credentials: Optional[str] = None,
+        custom_index_fields: Optional[Iterable["custom_index_fields_type"]] = None,
     ) -> "request_response":
         """Post a contract to a chain
 
@@ -135,6 +158,7 @@ class Client(object):
             schedule_interval_in_seconds (optional, int): The seconds of scheduled execution in seconds. Must not be set if cron_expression is set
             cron_expression (optional, str): The rate of scheduled execution specified as a cron. Must not be set if schedule_interval_in_seconds is set
             registry_credentials (optional, str): basic-auth for pulling docker images, base64 encoded (e.g. username:password)
+            custom_index_fields (optional): Custom index fields to assign to the transaction type for this smart contract. See create_transaction_type for details
 
         Raises:
             TypeError: with bad parameter types
@@ -142,6 +166,8 @@ class Client(object):
         Returns:
             Success or failure object
         """
+        if custom_index_fields is None:
+            custom_index_fields = []
         if not isinstance(transaction_type, str):
             raise TypeError('Parameter "transaction_type" must be of type str.')
         if not isinstance(image, str):
@@ -166,6 +192,8 @@ class Client(object):
             raise TypeError('Parameter "cron_expression" must be of type str.')
         if registry_credentials is not None and not isinstance(registry_credentials, str):
             raise TypeError('Parameter "registry_credentials" must be of type str.')
+        if not isinstance(custom_index_fields, list):
+            raise TypeError('Parameter "custom_index_fields" must be of type list.')
 
         body = cast(Dict[str, Any], {"version": "3", "txn_type": transaction_type, "image": image, "cmd": cmd, "execution_order": execution_order})
         if environment_variables:
@@ -180,6 +208,8 @@ class Client(object):
             body["cron"] = cron_expression
         if registry_credentials:
             body["auth"] = registry_credentials
+        if custom_index_fields:
+            body["custom_indexes"] = _validate_and_build_custom_index_fields_array(custom_index_fields)
         return self.request.post("/v1/contract", body)
 
     def update_smart_contract(  # noqa: C901
@@ -195,6 +225,7 @@ class Client(object):
         schedule_interval_in_seconds: Optional[int] = None,
         cron_expression: Optional[str] = None,
         registry_credentials: Optional[str] = None,
+        disable_schedule: Optional[bool] = None,
     ) -> "request_response":
         """Update an existing smart contract. The smart_contract_id and at least one optional parameter must be supplied.
 
@@ -210,6 +241,7 @@ class Client(object):
             schedule_interval_in_seconds (int, optional): The seconds of scheduled execution in seconds
             cron_expression (str, optional): The rate of scheduled execution specified as a cron
             registry_credentials (str, optional): basic-auth for pulling docker images, base64 encoded (e.g. username:password)
+            disable_schedule (bool, optional): Set True to remove the existing schedule_interval_in_seconds or cron_expression from the contract
 
         Raises:
             TypeError: with bad parameter types
@@ -241,6 +273,8 @@ class Client(object):
             raise TypeError('Parameter "cron_expression" must be of type str.')
         if registry_credentials is not None and not isinstance(registry_credentials, str):
             raise TypeError('Parameter "registry_credentials" must be of type str.')
+        if disable_schedule is not None and not isinstance(disable_schedule, bool):
+            raise TypeError('Parameter "disable_schedule" must be of type bool.')
 
         body = cast(Dict[str, Any], {"version": "3"})
         if image:
@@ -265,6 +299,8 @@ class Client(object):
             body["cron"] = cron_expression
         if registry_credentials:
             body["auth"] = registry_credentials
+        if disable_schedule:
+            body["disable_schedule"] = True
 
         return self.request.put("/v1/contract/{}".format(smart_contract_id), body)
 
@@ -285,21 +321,62 @@ class Client(object):
         return self.request.delete("/v1/contract/{}".format(smart_contract_id))
 
     def query_transactions(
-        self, lucene_query: Optional[str] = None, sort: Optional[str] = None, offset: int = 0, limit: int = 10
+        self,
+        transaction_type: str,
+        redisearch_query: str,
+        verbatim: bool = False,
+        offset: int = 0,
+        limit: int = 10,
+        sort_by: str = "",
+        sort_ascending: bool = True,
+        ids_only: bool = False,
     ) -> "request_response":
         """Perform a query on a chain's transactions
 
         Args:
-            lucene_query (str, optional): Lucene query parameter (e.g.: ``is_serial:true``)
-            sort (str, optional): Sort syntax of 'field:direction' (e.g.: ``txn_type:asc``)
+            transaction_type (str): The single transaction type to query
+            redisearch_query (str): Redisearch query syntax string to search with
+            verbatim (bool, optional): Whether or not to use redisearch's VERBATIM (if true, no stemming occurs on the query)
             offset (int, optional): Pagination offset of query (default 0)
             limit (int, optional): Pagination limit (default 10)
+            sort_by (str, optional): The name of the field to sort by
+            sort_ascending (bool, optional): If sort_by is set, this sorts the results by field in ascending order (descending if false)
+            ids_only (bool, optional): If true, rather than an array of transaction objects, it will return an array of transaction id strings instead
 
         Returns:
             The results of the query
         """
-        query_params = self.request.get_lucene_query_params(lucene_query, sort, offset, limit)
-        return self.request.get("/v1/transaction{}".format(query_params))
+        if not transaction_type or not isinstance(transaction_type, str):
+            raise TypeError('Parameter "transaction_type" must be of type str.')
+        if not redisearch_query or not isinstance(redisearch_query, str):
+            raise TypeError('Parameter "redisearch_query" must be of type str.')
+        if not isinstance(verbatim, bool):
+            raise TypeError('Parameter "verbatim" must be of type bool.')
+        if not isinstance(offset, int):
+            raise TypeError('Parameter "offset" must be of type int.')
+        if not isinstance(limit, int):
+            raise TypeError('Parameter "limit" must be of type int.')
+        if not isinstance(sort_by, str):
+            raise TypeError('Parameter "sort_by" must be of type str.')
+        if not isinstance(sort_ascending, bool):
+            raise TypeError('Parameter "sort_ascending" must be of type bool.')
+        if not isinstance(ids_only, bool):
+            raise TypeError('Parameter "ids_only" must be of type bool.')
+        query_dict = cast(
+            Dict[str, Any],
+            {
+                "transaction_type": transaction_type,
+                "q": redisearch_query,
+                "verbatim": verbatim,
+                "offset": offset,
+                "limit": limit,
+                "id_only": ids_only,
+            },
+        )
+        if sort_by:
+            query_dict["sort_by"] = sort_by
+            query_dict["sort_asc"] = sort_ascending
+        return self.request.get("/v1/transaction{}".format(self.request.generate_query_string(query_dict)))
 
     def get_transaction(self, transaction_id: str) -> "request_response":
         """Get a specific transaction by id
@@ -362,20 +439,39 @@ class Client(object):
 
         return self.request.post("/v1/transaction_bulk", post_data)
 
-    def query_blocks(self, lucene_query: Optional[str] = None, sort: Optional[str] = None, offset: int = 0, limit: int = 10) -> "request_response":
+    def query_blocks(
+        self, redisearch_query: str, offset: int = 0, limit: int = 10, sort_by: str = "", sort_ascending: bool = True, ids_only: bool = False
+    ) -> "request_response":
         """Perform a query on a chain's blocks
 
         Args:
-            lucene_query (str, optional): Lucene query parameter (e.g.: ``is_serial:true``)
-            sort (str, optional): Sort syntax of 'field:direction' (e.g.: ``block_id:asc``)
+            redisearch_query (str): Redisearch query syntax string to search with
             offset (int, optional): Pagination offset of query (default 0)
             limit (int, optional): Pagination limit (default 10)
+            sort_by (str, optional): The name of the field to sort by
+            sort_ascending (bool, optional): If sort_by is set, this sorts the results by field in ascending order (descending if false)
+            ids_only (bool, optional): If true, rather than an array of block objects, it will return an array of block id strings instead
 
         Returns:
             The results of the query
         """
-        query_params = self.request.get_lucene_query_params(lucene_query, sort, offset, limit)
-        return self.request.get("/v1/block{}".format(query_params))
+        if not redisearch_query or not isinstance(redisearch_query, str):
+            raise TypeError('Parameter "redisearch_query" must be of type str.')
+        if not isinstance(offset, int):
+            raise TypeError('Parameter "offset" must be of type int.')
+        if not isinstance(limit, int):
+            raise TypeError('Parameter "limit" must be of type int.')
+        if not isinstance(sort_by, str):
+            raise TypeError('Parameter "sort_by" must be of type str.')
+        if not isinstance(sort_ascending, bool):
+            raise TypeError('Parameter "sort_ascending" must be of type bool.')
+        if not isinstance(ids_only, bool):
+            raise TypeError('Parameter "ids_only" must be of type bool.')
+        query_dict = cast(Dict[str, Any], {"q": redisearch_query, "offset": offset, "limit": limit, "id_only": ids_only})
+        if sort_by:
+            query_dict["sort_by"] = sort_by
+            query_dict["sort_asc"] = sort_ascending
+        return self.request.get("/v1/block{}".format(self.request.generate_query_string(query_dict)))
 
     def get_block(self, block_id: str) -> "request_response":
         """Get a specific block by id
@@ -562,49 +658,28 @@ class Client(object):
         """
         return self.request.get("/v1/transaction-types")
 
-    def update_transaction_type(self, transaction_type: str, custom_indexes: List["custom_index_type"]) -> "request_response":
-        """Updates the custom index of a given registered transaction type
-        Transaction Types can optionally link custom search indexes to your transactions for easyier querying later.
-        A CustomIndex is a dictionairy with two keys: 'key' and 'path'.
-
-        key (str): The search term, on which the path will be searched.
-
-        path(str): the JSON path of your transaction payload you would like to result form a search on the "key".
-
-        For More details on JSONpath see https://pypi.org/project/jsonpath/
-
-        Args:
-            transaction_type (str): transaction_type to update
-            custom_indexes (list): custom_indexes to update. Ex.: [{"key": "myKey", "path": "jsonPath"}]
-
-        Raises:
-            TypeError: with bad parameter types
-
-        Returns:
-            Parsed json with success message
-        """
-        if not isinstance(transaction_type, str):
-            raise TypeError('Parameter "transaction_type" must be of type str.')
-        if not isinstance(custom_indexes, list):
-            raise TypeError('Parameter "custom_indexes" must be of type list.')
-        params = {"version": "1", "custom_indexes": custom_indexes}
-        return self.request.put("/v1/transaction-type/{}".format(transaction_type), params)
-
-    def create_transaction_type(self, transaction_type: str, custom_indexes: Optional[List["custom_index_type"]] = None) -> "request_response":
+    def create_transaction_type(
+        self, transaction_type: str, custom_index_fields: Optional[Iterable["custom_index_fields_type"]] = None
+    ) -> "request_response":
         """Creates a new custom transaction type.
 
-        Transaction Types can optionally link custom search indexes to your transactions for easyier querying later.
-        A CustomIndex is a dictionairy with two keys: 'key' and 'path'.
+        Transaction Types can optionally link custom search index fields to your transactions for easier querying later.
+        A custom_index_field is a dictionary with 'path', 'field_name', 'type', and an optional 'options' dictionary:
 
-        key (str): The search term, on which the path will be searched.
-
-        path(str): the JSON path of your transaction payload you would like to result form a search on the "key".
-
-        For More details on JSONpath see https://pypi.org/project/jsonpath/
+        path (str): the JSONPath of your transaction payload you would like to result form a search on the "key".
+        field_name (str): The field for this custom extracted value to be indexed under
+        type ('text', 'tag', or 'number'): The type of redisearch index to use for this field
+        options: (object) The redisearch options for this field
+        - no_index (bool) (all types) whether or not to index on this field, or simply make it sortable only if false
+        - separator (str) (tag only) what string should be used for the tag separator
+        - weight (number) (text only) The weight to give this text field when doing text queries
+        - no_stem (bool) (text only) Whether or not to allow search stemming in text searches on this field
+        - sortable (bool) (text and number only) Whether or not a search on the index can be sortable by this field
+        See redisearch for more details on these options: https://oss.redislabs.com/redisearch/Commands.html#field_options
 
         Args:
             transaction_type (str): transaction_type to update
-            custom_indexes (list): custom_indexes to update. Ex.: [{"key": "myKey", "path": "jsonPath"}]
+            custom_index_fields (optional): custom_index_fields to update. Ex.: [{"path":"a.b","field_name":"myField","type":"text","options":{"no_index":True}}]
 
         Raises:
             TypeError: with bad parameter types
@@ -612,15 +687,15 @@ class Client(object):
         Returns:
             Parsed json with success message
         """
-        if custom_indexes is None:
-            custom_indexes = []
+        if custom_index_fields is None:
+            custom_index_fields = []
         if not isinstance(transaction_type, str):
             raise TypeError('Parameter "transaction_type" must be of type str.')
-        if custom_indexes and not isinstance(custom_indexes, list):
-            raise TypeError('Parameter "custom_indexes" must be of type list.')
-        params = cast(Dict[str, Any], {"version": "1", "txn_type": transaction_type})
-        if custom_indexes:
-            params["custom_indexes"] = custom_indexes
+        if not isinstance(custom_index_fields, list):
+            raise TypeError('Parameter "custom_index_fields" must be of type list.')
+        params = cast(Dict[str, Any], {"version": "2", "txn_type": transaction_type})
+        if custom_index_fields:
+            params["custom_indexes"] = _validate_and_build_custom_index_fields_array(custom_index_fields)
         return self.request.post("/v1/transaction-type", params)
 
     def delete_transaction_type(self, transaction_type: str) -> "request_response":
@@ -779,7 +854,7 @@ class Client(object):
             private_key (str, optional): The base64 or hex encoded private key. Will generate randomly if not provided
             rpc_address (str, optional): The endpoint of the ethereum RPC node to use (i.e. http://my-node:8545)
             chain_id (int, optional): The ethereum chain id to use. Will automatically derive this if providing a custom rpc_address
-                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet|2=ETC Morden
+                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet|62=ETC Morden
 
         Raises:
             TypeError: with bad parameters
@@ -1038,6 +1113,78 @@ class Client(object):
             "This method is deprecated. It will continue to work for legacy chains, but will not work on any new chains. Use list_interchain_networks instead"
         )
         return self.request.get("/v1/public-blockchain-address")
+
+
+def _validate_and_build_custom_index_fields_array(  # noqa: C901
+    custom_index_fields: Iterable["custom_index_fields_type"]
+) -> List["custom_index_fields_type"]:
+    """Validate a list of custom index fields and return a list which can be passed as a body for custom indexes to the chain
+
+    Args:
+        custom_index_fields: The iterable of the user-input custom index fields
+
+    Raises:
+        TypeError: with bad custom index parameters
+
+    Returns:
+        List of custom index fields to pass to the chain
+    """
+    return_list = []
+    for cust_index in custom_index_fields:
+        if not isinstance(cust_index, dict):
+            raise TypeError('All items in "custom_index_fields" must be of type dict.')
+        # Check all the required fields
+        type_val = cust_index.get("type")
+        path_val = cust_index.get("path")
+        field_name_val = cust_index.get("field_name")
+        options_val = cust_index.get("options")
+        if not path_val or not isinstance(path_val, str):
+            raise TypeError('All items in "custom_index_fields.path" must be of type str.')
+        if type_val not in ["text", "tag", "number"]:
+            raise TypeError('All items in "custom_index_fields.type" must be either "text", "tag", or "number".')
+        if not field_name_val or not isinstance(field_name_val, str):
+            raise TypeError('All items in "custom_index_fields.field_name" must be of type str.')
+        # Check the (not required) options dict if it exists
+        if options_val:
+            if not isinstance(options_val, dict):
+                raise TypeError('All items in "custom_index_fields.options" must be of type dict.')
+            separator = options_val.get("separator")
+            no_index = options_val.get("no_index")
+            weight = options_val.get("weight")
+            no_stem = options_val.get("no_stem")
+            sortable = options_val.get("sortable")
+            if separator and not isinstance(separator, str):
+                raise TypeError('All items in "custom_index_fields.options.separator" must be of type str.')
+            if no_index and not isinstance(no_index, bool):
+                raise TypeError('All items in "custom_index_fields.options.no_index" must be of type bool.')
+            if weight and not isinstance(weight, (int, float)):
+                raise TypeError('All items in "custom_index_fields.options.weight" must be of type int or float.')
+            if no_stem and not isinstance(no_stem, bool):
+                raise TypeError('All items in "custom_index_fields.options.no_stem" must be of type bool.')
+            if sortable and not isinstance(sortable, bool):
+                raise TypeError('All items in "custom_index_fields.options.sortable" must be of type bool.')
+            # Trim options val to only necessary values in case extras were passed in
+            sending_options = {}
+            if no_index is not None:
+                sending_options["no_index"] = no_index
+            if type_val == "tag":
+                if separator is not None:
+                    sending_options["separator"] = separator
+            elif type_val == "number":
+                if sortable is not None:
+                    sending_options["sortable"] = sortable
+            else:  # Text is only one left
+                if no_stem is not None:
+                    sending_options["no_stem"] = no_stem
+                if weight is not None:
+                    sending_options["weight"] = weight
+                if sortable is not None:
+                    sending_options["sortable"] = sortable
+            options_val = sending_options
+        return_list.append(
+            cast("custom_index_fields_type", {"path": path_val, "type": type_val, "field_name": field_name_val, "options": options_val or {}})
+        )
+    return return_list
 
 
 def _build_transaction_dict(transaction_type: str, payload: Union[str, Dict[Any, Any]], tag: Optional[str] = None) -> Dict[str, Any]:

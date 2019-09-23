@@ -23,6 +23,7 @@ All of the source code, as well as issue tracker can be viewed `on github <https
    configuration
    api
    aio
+   migrating_v4
    changelog
 
 .. toctree::

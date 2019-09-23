@@ -203,34 +203,6 @@ class Request(object):
             # If input is empty, return an empty string as the query string
             return ""
 
-    def get_lucene_query_params(self, query: Optional[str] = None, sort: Optional[str] = None, offset: int = 0, limit: int = 10) -> str:
-        """Generate a lucene query param string with given inputs
-
-        Args:
-            query (str): lucene query parameter (e.g.: is_serial:true)
-            sort (str): sort syntax of 'field:direction' (e.g.: name:asc)
-            offset (int): pagination offset of query
-            limit (int): pagination limit
-
-        Raises:
-            TypeError: with bad parameter types
-
-        Returns:
-            Query string to include in request path
-        """
-        if query is not None and not isinstance(query, str):
-            raise TypeError('Parameter "query" must be of type str.')
-        if sort is not None and not isinstance(sort, str):
-            raise TypeError('Parameter "sort" must be of type str.')
-        if not isinstance(offset, int) or not isinstance(limit, int):
-            raise TypeError('Parameters "limit" and "offset" must be of type int.')
-        params = {"offset": str(offset), "limit": str(limit)}
-        if query:
-            params["q"] = query
-        if sort:
-            params["sort"] = sort
-        return self.generate_query_string(params)
-
     def _make_headers(self, timestamp: str, authorization: str, content_type: Optional[str] = None) -> Dict[str, str]:
         """Create a headers dictionary to send with a request to a dragonchain
 
