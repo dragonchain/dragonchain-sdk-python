@@ -42,6 +42,7 @@ Development:
   * Modify integration test suite to integrate with new/modified endpoints
 Packaging:
   * Update packaged metadata to indicate supported OS and stable/typed
+  * Enforce stricter rules when building docs
 
 3.3.0
 -----

@@ -129,7 +129,7 @@ class TestSmartContracts(unittest.TestCase):
         jsonschema.validate(response.get("response"), schema.smart_contract_at_rest_schema)
         global SMART_CONTRACT_CRON_ID
         SMART_CONTRACT_CRON_ID = response["response"]["id"]
-        time.sleep(10)
+        time.sleep(40)
 
     # GET #
 
@@ -165,7 +165,7 @@ class TestSmartContracts(unittest.TestCase):
         response = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_ARGS_ID, image="busybox:latest")
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
-        time.sleep(15)
+        time.sleep(20)
         updated_smart_contract = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_ARGS_NAME)
         self.assertEqual(updated_smart_contract["response"]["image"], "busybox:latest")
 
@@ -173,7 +173,7 @@ class TestSmartContracts(unittest.TestCase):
         response = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_ARGS_ID, args=["bacon"])
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
-        time.sleep(15)
+        time.sleep(20)
         updated_smart_contract = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_ARGS_NAME)
         self.assertEqual(updated_smart_contract["response"]["args"][0], "bacon")
 
@@ -181,7 +181,7 @@ class TestSmartContracts(unittest.TestCase):
         response = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_ENV_ID, environment_variables={"bacon": "tomato"})
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
-        time.sleep(15)
+        time.sleep(20)
         updated_smart_contract = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_ENV_NAME)
         self.assertEqual(updated_smart_contract["response"]["env"]["bacon"], "tomato")
 
@@ -189,7 +189,7 @@ class TestSmartContracts(unittest.TestCase):
         response = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_SECRETS_ID, secrets={"secret-banana": "bananas"})
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
-        time.sleep(15)
+        time.sleep(20)
         updated_smart_contract = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_SECRETS_NAME)
         self.assertIn("secret-banana", updated_smart_contract["response"]["existing_secrets"])
 
@@ -291,7 +291,7 @@ class TestSmartContracts(unittest.TestCase):
         response = self.client.delete_smart_contract(SMART_CONTRACT_BASIC_ID)
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
-        time.sleep(12)
+        time.sleep(30)
         deleted_fetch = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_BASIC_NAME)
         self.assertEqual(_expected_not_found_response, deleted_fetch)
 
@@ -299,7 +299,7 @@ class TestSmartContracts(unittest.TestCase):
         response = self.client.delete_smart_contract(SMART_CONTRACT_ARGS_ID)
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
-        time.sleep(12)
+        time.sleep(20)
         deleted_fetch = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_ARGS_NAME)
         self.assertEqual(_expected_not_found_response, deleted_fetch)
 
@@ -307,7 +307,7 @@ class TestSmartContracts(unittest.TestCase):
         response = self.client.delete_smart_contract(SMART_CONTRACT_SCHEDULER_ID)
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
-        time.sleep(12)
+        time.sleep(20)
         deleted_fetch = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_SCHEDULER_NAME)
         self.assertEqual(_expected_not_found_response, deleted_fetch)
 
@@ -315,7 +315,7 @@ class TestSmartContracts(unittest.TestCase):
         response = self.client.delete_smart_contract(SMART_CONTRACT_CRON_ID)
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
-        time.sleep(12)
+        time.sleep(20)
         deleted_fetch = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_CRON_NAME)
         self.assertEqual(_expected_not_found_response, deleted_fetch)
 
