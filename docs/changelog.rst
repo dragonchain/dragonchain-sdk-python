@@ -1,6 +1,14 @@
 Changelog
 =========
 
+4.0.1
+-----
+
+Packaging:
+  * Officially support python 3.8 in packaged release
+Development:
+  * Fix unit tests for proper async context mocking with python 3.8+
+
 4.0.0
 -----
 

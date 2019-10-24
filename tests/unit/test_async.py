@@ -11,6 +11,7 @@
 
 import unittest
 import importlib
+import inspect
 
 import dragonchain_sdk
 from dragonchain_sdk import exceptions
@@ -27,19 +28,18 @@ if dragonchain_sdk.ASYNC_SUPPORT:
     from dragonchain_sdk import async_helpers
 
 
-def async_test(function):
+def async_test(coro):
     def wrapper(*args, **kwargs):
-        coro = asyncio.coroutine(function)
-        future = coro(*args, **kwargs)
-        asyncio.get_event_loop().run_until_complete(future)
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(coro(*args, **kwargs))
 
     return wrapper
 
 
+# Needed for async context manager mocking pre-python3.8
 class AsyncContextManagerMock(MagicMock):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         for key in ("aenter_return", "aexit_return"):
             setattr(self, key, kwargs[key] if key in kwargs else MagicMock())
 
@@ -66,14 +66,15 @@ class TestAsync(unittest.TestCase):
 
     @patch("dragonchain_sdk.async_helpers.aiohttp")
     @patch("dragonchain_sdk.async_helpers.dragonchain_sdk.create_client")
-    @patch("dragonchain_sdk.async_helpers.types.MethodType", return_value="thing")
     @async_test
-    async def test_create_aio_client_sets_client_close_function(self, mock_method_bind, mock_create_client, mock_aiohttp):
+    async def test_create_aio_client_sets_client_close_function(self, mock_create_client, mock_aiohttp):
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client
         await async_helpers.create_aio_client("blah", some="kwarg")
-        mock_method_bind.assert_called_with(async_helpers.client_close, mock_client)
-        self.assertEqual(mock_client.close, "thing")
+        try:
+            self.assertTrue(inspect.iscoroutinefunction(mock_client.close))
+        except Exception as e:
+            self.fail(e)
 
     @patch("dragonchain_sdk.async_helpers.aiohttp.ClientSession", return_value="ok")
     @patch("dragonchain_sdk.async_helpers.dragonchain_sdk.create_client")
@@ -111,9 +112,13 @@ class TestAsync(unittest.TestCase):
         mock_request._generate_request_data = MagicMock(return_value=(None, None, None))
         mock_return_json = asyncio.Future()
         mock_return_json.set_result({"error": "some error"})
-        mock_request.session.request.return_value = AsyncContextManagerMock(
-            aenter_return=MagicMock(status=400, json=MagicMock(return_value=mock_return_json))
-        )
+        if unit.PY38:
+            mock_request.session.request.return_value.__aenter__.return_value.status = 400
+            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_return_json
+        else:
+            mock_request.session.request.return_value = AsyncContextManagerMock(
+                aenter_return=MagicMock(status=400, json=MagicMock(return_value=mock_return_json))
+            )
 
         expected_response = {"ok": False, "status": 400, "response": {"error": "some error"}}
         self.assertEqual(await async_helpers._make_request(mock_request, "GET", "/transaction"), expected_response)
@@ -124,9 +129,13 @@ class TestAsync(unittest.TestCase):
         mock_request._generate_request_data = MagicMock(return_value=(None, None, None))
         mock_return_json = asyncio.Future()
         mock_return_json.set_result({"test": "object"})
-        mock_request.session.request.return_value = AsyncContextManagerMock(
-            aenter_return=MagicMock(status=200, json=MagicMock(return_value=mock_return_json))
-        )
+        if unit.PY38:
+            mock_request.session.request.return_value.__aenter__.return_value.status = 200
+            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_return_json
+        else:
+            mock_request.session.request.return_value = AsyncContextManagerMock(
+                aenter_return=MagicMock(status=200, json=MagicMock(return_value=mock_return_json))
+            )
 
         expected_response = {"ok": True, "status": 200, "response": {"test": "object"}}
         self.assertEqual(await async_helpers._make_request(mock_request, "GET", "/transaction"), expected_response)
@@ -137,9 +146,13 @@ class TestAsync(unittest.TestCase):
         mock_request._generate_request_data = MagicMock(return_value=(None, None, None))
         mock_return_text = asyncio.Future()
         mock_return_text.set_result('{"test": "object"}')
-        mock_request.session.request.return_value = AsyncContextManagerMock(
-            aenter_return=MagicMock(status=200, text=MagicMock(return_value=mock_return_text))
-        )
+        if unit.PY38:
+            mock_request.session.request.return_value.__aenter__.return_value.status = 200
+            mock_request.session.request.return_value.__aenter__.return_value.text.return_value = mock_return_text
+        else:
+            mock_request.session.request.return_value = AsyncContextManagerMock(
+                aenter_return=MagicMock(status=200, text=MagicMock(return_value=mock_return_text))
+            )
 
         expected_response = {"ok": True, "status": 200, "response": '{"test": "object"}'}
         self.assertEqual(await async_helpers._make_request(mock_request, "GET", "/transaction", parse_response=False), expected_response)
@@ -150,9 +163,14 @@ class TestAsync(unittest.TestCase):
         mock_request._generate_request_data = MagicMock(return_value=(None, None, None))
         mock_fail_json = asyncio.Future()
         mock_fail_json.set_exception(RuntimeError("JSON Parse Error"))
-        mock_request.session.request.return_value = AsyncContextManagerMock(
-            aenter_return=MagicMock(status=200, json=MagicMock(return_value=mock_fail_json)), aexit_return=True
-        )
+        if unit.PY38:
+            mock_request.session.request.return_value.__aenter__.return_value.status = 200
+            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_fail_json
+            mock_request.session.request.return_value.__aexit__.return_value = True
+        else:
+            mock_request.session.request.return_value = AsyncContextManagerMock(
+                aenter_return=MagicMock(status=200, json=MagicMock(return_value=mock_fail_json)), aexit_return=True
+            )
 
         try:
             await async_helpers._make_request(mock_request, "GET", "/transaction")
@@ -166,9 +184,14 @@ class TestAsync(unittest.TestCase):
         mock_request._generate_request_data = MagicMock(return_value=(None, None, None))
         mock_fail_json = asyncio.Future()
         mock_fail_json.set_exception(RuntimeError("JSON Parse Error"))
-        mock_request.session.request.return_value = AsyncContextManagerMock(
-            aenter_return=MagicMock(status=200, json=MagicMock(return_value=mock_fail_json)), aexit_return=False
-        )
+        if unit.PY38:
+            mock_request.session.request.return_value.__aenter__.return_value.status = 200
+            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_fail_json
+            mock_request.session.request.return_value.__aexit__.return_value = False
+        else:
+            mock_request.session.request.return_value = AsyncContextManagerMock(
+                aenter_return=MagicMock(status=200, json=MagicMock(return_value=mock_fail_json)), aexit_return=False
+            )
 
         try:
             await async_helpers._make_request(mock_request, "GET", "/transaction")
@@ -182,7 +205,13 @@ class TestAsync(unittest.TestCase):
         mock_request._generate_request_data = MagicMock(return_value=("url", b"content", {"some": "headers"}))
         json = asyncio.Future()
         json.set_result("")
-        mock_request.session.request.return_value = AsyncContextManagerMock(aenter_return=MagicMock(status=200, json=MagicMock(return_value=json)))
+        if unit.PY38:
+            mock_request.session.request.return_value.__aenter__.return_value.status = 200
+            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = json
+        else:
+            mock_request.session.request.return_value = AsyncContextManagerMock(
+                aenter_return=MagicMock(status=200, json=MagicMock(return_value=json))
+            )
 
         await async_helpers._make_request(mock_request, "POST", "/transaction")
 
