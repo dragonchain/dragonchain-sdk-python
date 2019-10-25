@@ -34,6 +34,8 @@ SMART_CONTRACT_CRON_NAME = "banana-cron"
 SMART_CONTRACT_CRON_ID = None
 ARGS_CONTRACT_BODY = None
 CREATION_TIMESTAMP = None
+CRON_INVOCATION_COUNT = None
+SCHEDULER_INVOCATION_COUNT = None
 
 SCHEDULER = 60
 CRON = "* * * * *"
@@ -202,18 +204,39 @@ class TestSmartContracts(unittest.TestCase):
 
     # INVOCATION #
 
-    def wait_for_scheduler_invocation(self):
+    def wait_for_scheduler_invocation_1(self):
         time.sleep(60)
+
+    def disable_schedule(self):
+        self.assertTrue(self.client.update_smart_contract(SMART_CONTRACT_SCHEDULER_ID, disable_schedule=True).get("ok"))
+        self.assertTrue(self.client.update_smart_contract(SMART_CONTRACT_CRON_ID, disable_schedule=True).get("ok"))
 
     def test_successful_invocation_of_scheduler(self):
         transaction_invocation = self.client.query_transactions(SMART_CONTRACT_SCHEDULER_NAME, "*")
-        self.assertGreater(transaction_invocation["response"]["total"], 0)
+        global SCHEDULER_INVOCATION_COUNT
+        SCHEDULER_INVOCATION_COUNT = transaction_invocation["response"]["total"]
+        self.assertGreater(SCHEDULER_INVOCATION_COUNT, 0)
         self.assertGreater(transaction_invocation["response"]["results"][0]["header"]["timestamp"], CREATION_TIMESTAMP)
 
     def test_successful_invocation_of_cron(self):
         transaction_invocation = self.client.query_transactions(SMART_CONTRACT_CRON_NAME, "*")
-        self.assertGreater(transaction_invocation["response"]["total"], 0)
+        global CRON_INVOCATION_COUNT
+        CRON_INVOCATION_COUNT = transaction_invocation["response"]["total"]
+        self.assertGreater(CRON_INVOCATION_COUNT, 0)
         self.assertGreater(transaction_invocation["response"]["results"][0]["header"]["timestamp"], CREATION_TIMESTAMP)
+
+    def wait_for_scheduler_invocation_2(self):
+        time.sleep(65)
+
+    def test_disable_schedule_works_on_scheduler(self):
+        transaction_invocation = self.client.query_transactions(SMART_CONTRACT_SCHEDULER_NAME, "*")
+        # Assert that the transaction count after waiting 60 seconds is the same as after we immediately disabled the schedule
+        self.assertEqual(SCHEDULER_INVOCATION_COUNT, transaction_invocation["response"]["total"])
+
+    def test_disable_schedule_works_on_cron(self):
+        transaction_invocation = self.client.query_transactions(SMART_CONTRACT_CRON_NAME, "*")
+        # Assert that the transaction count after waiting 60 seconds is the same as after we immediately disabled the schedule
+        self.assertEqual(CRON_INVOCATION_COUNT, transaction_invocation["response"]["total"])
 
     def test_successful_invocation_with_transactions(self):
         args_transaction = self.client.create_transaction(SMART_CONTRACT_ARGS_NAME, "banana", tag="banana")
@@ -356,9 +379,13 @@ def suite():
     suite.addTest(TestSmartContracts("test_update_contract_with_env"))
     suite.addTest(TestSmartContracts("test_update_contract_with_secrets"))
     suite.addTest(TestSmartContracts("test_update_contract_execution_order"))
-    suite.addTest(TestSmartContracts("wait_for_scheduler_invocation"))
+    suite.addTest(TestSmartContracts("wait_for_scheduler_invocation_1"))
+    suite.addTest(TestSmartContracts("disable_schedule"))
     suite.addTest(TestSmartContracts("test_successful_invocation_of_scheduler"))
     suite.addTest(TestSmartContracts("test_successful_invocation_of_cron"))
+    suite.addTest(TestSmartContracts("wait_for_scheduler_invocation_2"))
+    suite.addTest(TestSmartContracts("test_disable_schedule_works_on_scheduler"))
+    suite.addTest(TestSmartContracts("test_disable_schedule_works_on_cron"))
     suite.addTest(TestSmartContracts("test_successful_invocation_with_transactions"))
     suite.addTest(TestSmartContracts("test_get_contract_logs_with_contract_id"))
     suite.addTest(TestSmartContracts("test_get_contract_logs_with_contract_id_tail_and_since"))
