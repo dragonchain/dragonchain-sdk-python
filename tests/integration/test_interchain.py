@@ -60,6 +60,15 @@ class TestInterchain(unittest.TestCase):
         self.assertEqual(response.get("status"), 201, response)
         jsonschema.validate(response.get("response"), schema.ethereum_interchain_at_rest_schema)
 
+    def test_create_ethereum_interchain_fails_with_existing_name(self):
+        response = self.client.create_ethereum_interchain(ETHEREUM_INTERCHAIN_NAME_2, chain_id=1)
+        expected_response = {
+            "status": 409,
+            "ok": False,
+            "response": {"error": {"type": "INTERCHAIN_CONFLICT", "details": "An interchain network with the name you provided already exists"}},
+        }
+        self.assertEqual(response, expected_response)
+
     def test_create_ethereum_interchain_fails_with_bad_rpc_address(self):
         response = self.client.create_ethereum_interchain("garbage", rpc_address="http://youcantGETthis.whatever")
         self.assertFalse(response.get("ok"), response)
@@ -125,6 +134,15 @@ class TestInterchain(unittest.TestCase):
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 201, response)
         jsonschema.validate(response.get("response"), schema.bitcoin_interchain_at_rest_schema)
+
+    def test_create_bitcoin_interchain_fails_with_existing_name(self):
+        response = self.client.create_bitcoin_interchain(BITCOIN_INTERCHAIN_NAME_2, testnet=False)
+        expected_response = {
+            "status": 409,
+            "ok": False,
+            "response": {"error": {"type": "INTERCHAIN_CONFLICT", "details": "An interchain network with the name you provided already exists"}},
+        }
+        self.assertEqual(response, expected_response)
 
     def test_create_bitcoin_interchain_fails_with_bad_rpc_address(self):
         response = self.client.create_bitcoin_interchain("garbage", testnet=True, rpc_address="http://youcantGETthis.whatever")
@@ -406,12 +424,14 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestInterchain("test_create_ethereum_interchain_with_values"))
     suite.addTest(TestInterchain("test_create_ethereum_interchain_with_defaults"))
+    suite.addTest(TestInterchain("test_create_ethereum_interchain_fails_with_existing_name"))
     suite.addTest(TestInterchain("test_create_ethereum_interchain_fails_with_bad_rpc_address"))
     suite.addTest(TestInterchain("test_create_ethereum_interchain_fails_with_mismatching_chain_id"))
     suite.addTest(TestInterchain("test_create_ethereum_interchain_fails_with_bad_private_key"))
     suite.addTest(TestInterchain("test_create_ethereum_interchain_fails_without_chain_id_or_rpc_address"))
     suite.addTest(TestInterchain("test_create_bitcoin_interchain_with_values"))
     suite.addTest(TestInterchain("test_create_bitcoin_interchain_with_defaults"))
+    suite.addTest(TestInterchain("test_create_bitcoin_interchain_fails_with_existing_name"))
     suite.addTest(TestInterchain("test_create_bitcoin_interchain_fails_with_bad_rpc_address"))
     suite.addTest(TestInterchain("test_create_bitcoin_interchain_fails_without_wif_private_key_or_testnet"))
     suite.addTest(TestInterchain("test_create_bitcoin_interchain_fails_with_bad_private_key"))

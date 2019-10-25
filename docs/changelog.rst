@@ -1,6 +1,15 @@
 Changelog
 =========
 
+4.0.1
+-----
+
+Packaging:
+  * Officially support python 3.8 in packaged release
+Development:
+  * Fix unit tests for proper async context mocking with python 3.8+
+  * Add integration tests for Dragonchain 4.1.0 features and changes
+
 4.0.0
 -----
 

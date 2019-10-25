@@ -18,6 +18,9 @@ import jsonschema
 from tests.integration import schema
 import dragonchain_sdk
 
+SC_ID = None
+SC_TXN_TYPE = "contractType1"
+INVOKER_TXN_ID = None
 TEST_TXN_TYPE = "testingType1"
 QUERY_TXN_TYPE = "queryTesting"
 EMPTY_STRING_TXN_ID = None
@@ -40,6 +43,8 @@ class TestTransactions(unittest.TestCase):
 
     def set_up_transaction_types(self):
         try:
+            global SC_ID
+            SC_ID = self.client.create_smart_contract(SC_TXN_TYPE, "alpine:latest", "echo", ["hello"])["response"]["id"]
             self.client.create_transaction_type(TEST_TXN_TYPE)
             self.client.create_transaction_type(
                 QUERY_TXN_TYPE,
@@ -49,6 +54,7 @@ class TestTransactions(unittest.TestCase):
                     {"path": "test.num", "field_name": "query_num", "type": "number", "options": {"sortable": True}},
                 ],
             )
+            time.sleep(20)
         except Exception:
             pass
 
@@ -101,6 +107,14 @@ class TestTransactions(unittest.TestCase):
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 201, response)
         jsonschema.validate(response.get("response"), schema.create_transaction_schema)
+
+    def test_create_transaction_for_smart_contract(self):
+        response = self.client.create_transaction(transaction_type=SC_TXN_TYPE, payload="")
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 201, response)
+        jsonschema.validate(response.get("response"), schema.create_transaction_schema)
+        global INVOKER_TXN_ID
+        INVOKER_TXN_ID = response["response"]["transaction_id"]
 
     def test_create_transaction_fails_without_transaction_type(self):
         response = self.client.create_transaction(transaction_type="doesnotexist", payload="")
@@ -375,6 +389,16 @@ class TestTransactions(unittest.TestCase):
         self.assertEqual(response1["response"]["results"][0]["header"]["txn_id"], LOW_TXN_ID, "Wrong result for tag query 1")
         self.assertEqual(response2["response"]["results"][0]["header"]["txn_id"], HIGH_TXN_ID, "Wrong result for tag query 2")
 
+    def test_query_transactions_by_invoker(self):
+        response = self.client.query_transactions(SC_TXN_TYPE, "@invoker:{{{}}}".format(INVOKER_TXN_ID.replace("-", "\\-")))
+        self.assertEqual(response.get("status"), 200, response)
+        self.assertTrue(response.get("ok"), response)
+        jsonschema.validate(response.get("response"), schema.query_transaction_schema)
+        # Check we got the correct number of results
+        self.assertEqual(response["response"]["total"], 1)
+        # Double check that the transaction we got back has the invoker we expect
+        self.assertEqual(response["response"]["results"][0]["header"]["invoker"], INVOKER_TXN_ID, response)
+
     def test_query_transactions_verbatim(self):
         response1 = self.client.query_transactions(QUERY_TXN_TYPE, "contently", verbatim=False)  # Stems to match "content" from the tag
         response2 = self.client.query_transactions(QUERY_TXN_TYPE, "contently", verbatim=True)
@@ -499,6 +523,7 @@ class TestTransactions(unittest.TestCase):
     # CLEANUP #
 
     def clean_up_transaction_types(self):
+        self.client.delete_smart_contract(SC_ID)
         self.client.delete_transaction_type(TEST_TXN_TYPE)
         self.client.delete_transaction_type(QUERY_TXN_TYPE)
 
@@ -512,6 +537,7 @@ def suite():
     suite.addTest(TestTransactions("test_create_transaction_with_nonempty_object_payload"))
     suite.addTest(TestTransactions("test_create_transaction_with_tag"))
     suite.addTest(TestTransactions("test_create_transaction_with_callback"))
+    suite.addTest(TestTransactions("test_create_transaction_for_smart_contract"))
     suite.addTest(TestTransactions("test_create_transaction_fails_without_transaction_type"))
     suite.addTest(TestTransactions("test_create_bulk_transactions_with_all_valid_transactions"))
     suite.addTest(TestTransactions("test_create_bulk_transactions_with_some_nonexisting_transaction_types"))
@@ -533,6 +559,7 @@ def suite():
     suite.addTest(TestTransactions("test_query_transactions_by_timestamp"))
     suite.addTest(TestTransactions("test_query_transactions_by_block_id"))
     suite.addTest(TestTransactions("test_query_transactions_by_general_tag"))
+    suite.addTest(TestTransactions("test_query_transactions_by_invoker"))
     suite.addTest(TestTransactions("test_query_transactions_verbatim"))
     suite.addTest(TestTransactions("test_query_transactions_ids_only"))
     suite.addTest(TestTransactions("test_query_transactions_paging"))

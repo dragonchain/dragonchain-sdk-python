@@ -270,7 +270,7 @@ class Request(object):
 
         logger.debug("{} {}".format(http_verb, full_url))
         logger.debug("Headers: {}".format(header_dict))
-        logger.debug("Data: {}".format(content))
+        logger.debug("Data: {!r}".format(content))
         return full_url, content, additional_headers
 
     def _make_request(

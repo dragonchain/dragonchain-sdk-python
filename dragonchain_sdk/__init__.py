@@ -16,7 +16,7 @@ from typing import Optional, Any
 from dragonchain_sdk import dragonchain_client
 
 __author__ = "Dragonchain, Inc."
-__version__ = "4.0.0"
+__version__ = "4.0.1"
 
 ASYNC_SUPPORT = False
 

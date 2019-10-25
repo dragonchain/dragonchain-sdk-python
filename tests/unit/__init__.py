@@ -12,4 +12,5 @@
 import sys
 
 PY36 = sys.version_info[:2] >= (3, 6)
-CI_COVERAGE_VERSION = sys.version_info[:2] == (3, 7)
+PY38 = sys.version_info[:2] >= (3, 8)
+CI_COVERAGE_VERSION = sys.version_info[:2] == (3, 8)

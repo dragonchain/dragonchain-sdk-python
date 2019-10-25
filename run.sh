@@ -19,6 +19,7 @@ install      : install the project from source (depends on running build first)
 install-req  : install the python dependencies to dev on the project
 build-dist   : build the distribution artifcats for the project from source
 clean        : remove compiled python/docs/other build or distrubition artifacts from the local project
+docker-test  : run all the checks in a docker container that a PR will test for
 full-build   : run all of the tests that the pull request/build would check, locally
 dist-release : upload and distribute the artifacts from build-dist to pypi"
 
@@ -73,6 +74,9 @@ elif [ "$1" = "build-dist" ]; then
 elif [ "$1" = "clean" ]; then
     find . -name __pycache__ -exec rm -rfv {} +
     rm -rfv .coverage coverage.xml build/ dist/ dragonchain_sdk.egg-info/ docs/.build/
+elif [ "$1" = "docker-test" ]; then
+    docker build . -f ./build.Dockerfile -t dragonchain_sdk_testing_container
+    docker run -v "$(pwd)":/usr/src/sdk dragonchain_sdk_testing_container
 elif [ "$1" = "full-build" ]; then
     set +e
     printf "\\nChecking for linting errors\\n\\n"
