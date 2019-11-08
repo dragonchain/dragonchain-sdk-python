@@ -391,7 +391,7 @@ class Client(object):
             The transaction searched for
         """
         if not isinstance(transaction_id, str):
-            raise TypeError('Paramter "transaction_id" must be of type str.')
+            raise TypeError('Parameter "transaction_id" must be of type str.')
         return self.request.get("/v1/transaction/{}".format(transaction_id))
 
     def create_transaction(
@@ -727,7 +727,7 @@ class Client(object):
 
         Args:
             name (str): The name to use for this network. Will overwrite if providing a name that already exists
-            testnet (bool): Whether or not this is a testnet wallet/address (not required if providing private_key as WIF)
+            testnet (bool, optional): Whether or not this is a testnet wallet/address (not required if providing private_key as WIF)
             private_key (str, optional): The base64 encoded private key, or WIF for the desired wallet. Will generate randomly if not provided
             rpc_address (str, optional): The endpoint of the bitcoin core RPC node to use (i.e. http://my-node:8332)
             rpc_authorization (str, optional): The base64-encoded username:password for the rpc node. For example, user: a pass: b would be 'YTpi' (base64("a:b"))
@@ -946,6 +946,128 @@ class Client(object):
         transaction = _build_ethereum_transaction_body(to=to, value=value, data=data, gas_price=gas_price, gas=gas, nonce=nonce)
         return self.request.post("/v1/interchains/ethereum/{}/transaction".format(name), transaction)
 
+    def create_binance_interchain(
+        self,
+        name: str,
+        testnet: Optional[bool] = None,
+        private_key: Optional[str] = None,
+        node_url: Optional[str] = None,
+        rpc_port: Optional[int] = None,
+        api_port: Optional[int] = None,
+    ) -> "request_response":
+        """Create (or overwrite) a binance wallet/network for interchain use
+
+        Args:
+            name (str): The name to use for this network. Will overwrite if providing a name that already exists
+            testnet (bool, optional): Whether or not this is a testnet wallet/address.  Defaults to True.
+            private_key (str, optional): The base64 or hex encoded private key. Will generate randomly if not provided
+            node_url (str, optional): The endpoint of the binance RPC node to use (i.e. http://my.node.address)
+            rpc_port (int, optional): The port being used to hit the RPC endpoints (i.e. 27147)
+            api_port (int, optional): The port being used to hit the API endpoints (i.e. 1169)
+
+        Raises:
+            TypeError: with bad parameters
+
+        Returns:
+            The created interchain network
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if testnet is not None and not isinstance(testnet, bool):
+            raise TypeError('Parameter "testnet" must be of type bool.')
+        if private_key is not None and not isinstance(private_key, str):
+            raise TypeError('Parameter "private_key" must be of type str.')
+        if node_url is not None and not isinstance(node_url, str):
+            raise TypeError('Parameter "node_url" must be of type str.')
+        if rpc_port is not None and not isinstance(rpc_port, int):
+            raise TypeError('Parameter "rpc_port" must be of type str.')
+        if api_port is not None and not isinstance(api_port, int):
+            raise TypeError('Parameter "api_port" must be of type str.')
+        body = cast(Dict[str, Any], {"version": "1", "name": name})
+        if testnet is not None:
+            body["testnet"] = testnet
+        if private_key:
+            body["private_key"] = private_key
+        if node_url:
+            body["node_url"] = node_url
+        if rpc_port:
+            body["rpc_port"] = rpc_port
+        if api_port:
+            body["api_port"] = api_port
+        return self.request.post("/v1/interchains/binance", body)
+
+    def update_binance_interchain(
+        self,
+        name: str,
+        testnet: Optional[bool] = None,
+        private_key: Optional[str] = None,
+        node_url: Optional[str] = None,
+        rpc_port: Optional[int] = None,
+        api_port: Optional[int] = None,
+    ) -> "request_response":
+        """Update an existing binance wallet/network for interchain use
+
+        Args:
+            name (str): The name of the network to update
+            testnet (bool): Whether or not this is a testnet wallet/address
+            private_key (str, optional): The base64 or hex encoded private key. Will generate randomly if not provided
+            node_url (str, optional): The endpoint of the binance RPC node to use (i.e. http://my.node.address)
+            rpc_port (int, optional): The port being used to hit the RPC endpoints (i.e. 27147)
+            api_port (int, optional): The port being used to hit the API endpoints (i.e. 1169)
+
+        Raises:
+            TypeError: with bad parameters
+
+        Returns:
+            The updated interchain network
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if testnet is not None and not isinstance(testnet, bool):
+            raise TypeError('Parameter "testnet" must be of type bool.')
+        if private_key is not None and not isinstance(private_key, str):
+            raise TypeError('Parameter "private_key" must be of type str.')
+        if node_url is not None and not isinstance(node_url, str):
+            raise TypeError('Parameter "node_url" must be of type str.')
+        if rpc_port is not None and not isinstance(rpc_port, int):
+            raise TypeError('Parameter "rpc_port" must be of type str.')
+        if api_port is not None and not isinstance(api_port, int):
+            raise TypeError('Parameter "api_port" must be of type str.')
+        body = cast(Dict[str, Any], {"version": "1"})
+        if testnet is not None:
+            body["testnet"] = testnet
+        if private_key:
+            body["private_key"] = private_key
+        if node_url:
+            body["node_url"] = node_url
+        if rpc_port:
+            body["rpc_port"] = rpc_port
+        if api_port:
+            body["api_port"] = api_port
+        return self.request.patch("/v1/interchains/binance/{}".format(name), body)
+
+    def sign_binance_transaction(
+        self, name: str, amount: int, to_address: str, symbol: Optional[str] = None, memo: Optional[str] = None
+    ) -> "request_response":
+        """Create and sign a binance transaction using your chain's interchain network
+
+        Args:
+            name (str): name of the binance network to use for signing
+            amount (int): amount of token in transaction
+            to_address (str): hex of the address to send to
+            symbol (str, optional): the exchange symbol for the token (defaults to BNB)
+            memo (str, optional): string of data to publish in the transaction (defaults to "")
+        Raises:
+            TypeError: with bad parameter types
+
+        Returns:
+            The built and signed transaction
+        """
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        transaction = _build_binance_transaction_body(symbol=symbol, amount=amount, to_address=to_address, memo=memo)
+        return self.request.post("/v1/interchains/binance/{}/transaction".format(name), transaction)
+
     def get_interchain_network(self, blockchain: str, name: str) -> "request_response":
         """Get a configured interchain network/wallet from the chain
 
@@ -1116,7 +1238,7 @@ class Client(object):
 
 
 def _validate_and_build_custom_index_fields_array(  # noqa: C901
-    custom_index_fields: Iterable["custom_index_fields_type"]
+    custom_index_fields: Iterable["custom_index_fields_type"],
 ) -> List["custom_index_fields_type"]:
     """Validate a list of custom index fields and return a list which can be passed as a body for custom indexes to the chain
 
@@ -1298,5 +1420,39 @@ def _build_bitcoin_transaction_body(
         body["data"] = data
     if change_address:
         body["change"] = change_address
+
+    return body
+
+
+def _build_binance_transaction_body(amount: int, to_address: str, symbol: Optional[str] = None, memo: Optional[str] = None) -> Dict[str, Any]:
+    """Build the json (dictionary) body for a binance transaction given its inputs
+
+    Args:
+        amount (int): amount of token in transaction
+        to_address (str): hex of the address to send to
+        symbol (str, optional): the exchange symbol for the token (defaults to BNB)
+        memo (str, optional): string of data to publish in the transaction (defaults to "")
+
+    Raises:
+        TypeError: with bad parameter types
+
+    Returns:
+        Dictionary body to use for sending a binance transaction
+    """
+
+    if not isinstance(amount, int):
+        raise TypeError('Parameter "amount" must be of type int.')
+    if not isinstance(to_address, str):
+        raise TypeError('Parameter "to_address" must be of type str.')
+    if symbol is not None and not isinstance(symbol, str):
+        raise TypeError('Parameter "symbol" must be of type str.')
+    if memo is not None and not isinstance(memo, str):
+        raise TypeError('Parameter "memo" must be of type str.')
+
+    body = cast(Dict[str, Any], {"version": "1", "amount": amount, "to_address": to_address})
+    if symbol:
+        body["symbol"] = symbol
+    if memo:
+        body["memo"] = memo
 
     return body

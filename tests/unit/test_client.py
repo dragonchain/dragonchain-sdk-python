@@ -1059,3 +1059,63 @@ class TestClientMethods(unittest.TestCase):
                 "nonce": "0xnonce",
             },
         )
+
+    def test_create_binance_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.create_binance_interchain, 1)  # "name", required
+        self.assertRaises(TypeError, self.client.create_binance_interchain, "a", "not_boolean")  # "testnet", bool
+        self.assertRaises(TypeError, self.client.create_binance_interchain, "a", True, 1)  # "private_key", str
+        self.assertRaises(TypeError, self.client.create_binance_interchain, "a", True, "key", 1)  # "node_url", str
+        self.assertRaises(TypeError, self.client.create_binance_interchain, "a", True, "key", "url", "port")  # "rpc_port", int
+        self.assertRaises(TypeError, self.client.create_binance_interchain, "a", True, "key", "url", 123, "port")  # "api_port", int
+
+    def test_create_binance_interchain_calls_correctly_with_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.create_binance_interchain("name", True, "key", "addy", 1234, 5678)
+        params = {"version": "1", "name": "name", "testnet": True, "private_key": "key", "node_url": "addy", "rpc_port": 1234, "api_port": 5678}
+        self.client.request.post.assert_called_once_with("/v1/interchains/binance", params)
+
+    def test_create_binance_interchain_calls_correctly_without_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.create_binance_interchain("name")
+        self.client.request.post.assert_called_once_with("/v1/interchains/binance", {"version": "1", "name": "name"})
+
+    def test_update_binance_interchain_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.update_binance_interchain, 1)  # "name", required
+        self.assertRaises(TypeError, self.client.update_binance_interchain, "a", "not_boolean")  # breaking: bool "testnet"
+        self.assertRaises(TypeError, self.client.update_binance_interchain, "a", True, 1)  # breaking: str private_key"
+        self.assertRaises(TypeError, self.client.update_binance_interchain, "a", True, "key", 1)  # breaking: str "node_url"
+        self.assertRaises(TypeError, self.client.update_binance_interchain, "a", True, "key", "url", "port")  # breaking: int "rpc_port"
+        self.assertRaises(TypeError, self.client.update_binance_interchain, "a", True, "key", "url", 123, "port")  # breaking: int "api_port"
+
+    def test_update_binance_interchain_calls_correctly_with_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.update_binance_interchain("name", True, "key", "addy", 1234, 5678)
+        params = {"version": "1", "testnet": True, "private_key": "key", "node_url": "addy", "rpc_port": 1234, "api_port": 5678}
+        self.client.request.patch.assert_called_once_with("/v1/interchains/binance/name", params)
+
+    def test_update_binance_interchain_calls_correctly_without_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.update_binance_interchain("name")
+        self.client.request.patch.assert_called_once_with("/v1/interchains/binance/name", {"version": "1"})
+
+    def test_sign_binance_transaction_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.sign_binance_transaction, 0, 100, "addy")  # breaking: str "name"
+        self.assertRaises(TypeError, self.client.sign_binance_transaction, "name", "amt", "addy")  # breaking: int "amount"
+        self.assertRaises(TypeError, self.client.sign_binance_transaction, "name", 100, 0000)  # breaking: str "to_address"
+        self.assertRaises(TypeError, self.client.sign_binance_transaction, "name", 100, "addy", 000)  # breaking: str "symbol"
+        self.assertRaises(TypeError, self.client.sign_binance_transaction, "name", 100, "addy", "BNB", 0000)  # breaking: str "memo"
+
+    def test_sign_binance_transaction_calls_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.sign_binance_transaction("name", 123, "0xaddress", "SYMBOL", "MEMO")
+        params = {"version": "1", "amount": 123, "to_address": "0xaddress", "symbol": "SYMBOL", "memo": "MEMO"}
+        self.client.request.post.assert_called_once_with("/v1/interchains/binance/name/transaction", params)
+
+    def test_sign_binance_transaction_calls_correctly_without_optional_params(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.sign_binance_transaction("name", 123, "0xaddress")
+        params = {"version": "1", "amount": 123, "to_address": "0xaddress"}
+        self.client.request.post.assert_called_once_with("/v1/interchains/binance/name/transaction", params)
