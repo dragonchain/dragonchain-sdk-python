@@ -8,6 +8,7 @@ Features:
   * Add Binance interchain support
 Development:
   * Add integration tests for Binance feature
+  * Add/Update integration tests for Dragonchain 4.2.0
 
 4.0.1
 -----

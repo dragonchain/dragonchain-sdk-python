@@ -54,7 +54,7 @@ class TestTransactions(unittest.TestCase):
                     {"path": "test.num", "field_name": "query_num", "type": "number", "options": {"sortable": True}},
                 ],
             )
-            time.sleep(20)
+            time.sleep(25)
         except Exception:
             pass
 
@@ -201,7 +201,7 @@ class TestTransactions(unittest.TestCase):
         self.assertEqual(response["response"]["error"]["type"], "VALIDATION_ERROR", response)
 
     def wait_for_blocks(self):
-        time.sleep(8)
+        time.sleep(15)
 
     # GET #
 
@@ -288,16 +288,6 @@ class TestTransactions(unittest.TestCase):
 
     # QUERY #
 
-    def test_query_transaction_returns_stub_if_not_in_block(self):
-        txn_id = self.client.create_transaction(TEST_TXN_TYPE, "", tag="somethingUnique")["response"]["transaction_id"]
-        response = self.client.query_transactions(TEST_TXN_TYPE, "somethingUnique")
-        self.assertEqual(response.get("status"), 200)
-        self.assertTrue(response.get("ok"))
-        self.assertEqual(
-            response["response"]["results"][0],
-            {"header": {"txn_id": txn_id}, "message": "This transaction is waiting to be included in a block", "status": "pending"},
-        )
-
     def set_up_queryable_transactions(self):
         global LOW_TXN_ID
         global HIGH_TXN_ID
@@ -308,6 +298,7 @@ class TestTransactions(unittest.TestCase):
         HIGH_TXN_ID = self.client.create_transaction(
             QUERY_TXN_TYPE, tag="unique2 content", payload={"test": {"text": "a sortable text2 field", "tag": "someTag2", "num": 4321}}
         )["response"]["transaction_id"]
+        time.sleep(8)
 
     def test_query_transactions_generic(self):
         response = self.client.query_transactions(QUERY_TXN_TYPE, "*")
@@ -554,7 +545,6 @@ def suite():
     suite.addTest(TestTransactions("test_get_transaction_with_tag"))
     suite.addTest(TestTransactions("test_get_transaction_from_bulk_submission"))
     suite.addTest(TestTransactions("test_get_transaction_fails_with_bad_id"))
-    suite.addTest(TestTransactions("test_query_transaction_returns_stub_if_not_in_block"))
     suite.addTest(TestTransactions("test_query_transactions_generic"))
     suite.addTest(TestTransactions("test_query_transactions_by_timestamp"))
     suite.addTest(TestTransactions("test_query_transactions_by_block_id"))
