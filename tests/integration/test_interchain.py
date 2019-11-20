@@ -27,6 +27,7 @@ ETHEREUM_INTERCHAIN_BODY = {
     "address": "0x75901edd83835ca01B525C8B8F496A5dA3F9ebd5",
 }
 ETHEREUM_INTERCHAIN_NAME_2 = "eth_integration_2"
+
 BITCOIN_INTERCHAIN_NAME_1 = "btc_integration_1"
 BITCOIN_INTERCHAIN_BODY = {
     "version": "1",
@@ -38,10 +39,24 @@ BITCOIN_INTERCHAIN_BODY = {
 }
 BITCOIN_INTERCHAIN_NAME_2 = "btc_integration_2"
 
+BINANCE_INTERCHAIN_NAME_1 = "bnb_integration_1"
+BINANCE_INTERCHAIN_BODY = {
+    "version": "1",
+    "blockchain": "binance",
+    "name": BINANCE_INTERCHAIN_NAME_1,
+    "node_url": "http://binance-node.dragonchain.com",
+    "rpc_port": 26657,
+    "api_port": 11699,
+    "testnet": True,
+    "address": "tbnb1st0kkjzxsy4dpdr96znpqmfxadyn48ynjry9zd",
+}
+BINANCE_INTERCHAIN_NAME_2 = "bnb_integration_2"
+
 
 class TestInterchain(unittest.TestCase):
     def setUp(self):
         self.client = dragonchain_sdk.create_client()
+        self.maxDiff = None  # allows max display of diffs in test logs
 
     # CREATE #
 
@@ -174,6 +189,41 @@ class TestInterchain(unittest.TestCase):
             response,
         )
 
+    def test_create_binance_interchain_with_values(self):
+        url = "http://binance-node.dragonchain.com"
+        privkey = "c7603e7928cc9892982d5cda97cc50b9db81ec40ef3f7b9d515fb333151140bf"
+        response = self.client.create_binance_interchain(
+            name=BINANCE_INTERCHAIN_NAME_1, testnet=True, private_key=privkey, node_url=url, rpc_port=26657, api_port=11699
+        )
+        self.assertEqual(response, {"status": 201, "ok": True, "response": BINANCE_INTERCHAIN_BODY}, response)
+
+    def test_create_binance_interchain_with_defaults(self):
+        response = self.client.create_binance_interchain(name=BINANCE_INTERCHAIN_NAME_2)
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 201, response)
+        jsonschema.validate(response.get("response"), schema.binance_interchain_at_rest_schema)
+
+    def test_create_binance_interchain_fails_with_bad_node_address(self):
+        response = self.client.create_binance_interchain(
+            name="garbage", testnet=True, node_url="http://youcantGETthis.whatever", rpc_port=26657, api_port=11699
+        )
+        self.assertFalse(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 400, response)
+        self.assertTrue(response.get("response")["error"]["details"].startswith("Provided binance node doesn't seem reachable."), response)
+
+    def test_create_binance_interchain_fails_with_bad_private_key(self):
+        bad_hex = "9iQWROmdJ3iGwIZVDghnp2WpIejd0dpb9KPvgDEA06N3B0zp9CGOW5yAf09f8d8c"  # 64 random chars
+        response = self.client.create_binance_interchain(name="garbage", testnet=True, private_key=bad_hex)
+        self.assertEqual(
+            response,
+            {
+                "status": 400,
+                "ok": False,
+                "response": {"error": {"type": "BAD_REQUEST", "details": "Provided private key did not successfully decode into a valid key."}},
+            },
+            response,
+        )
+
     # GET #
 
     def test_get_existing_ethereum_interchain(self):
@@ -191,6 +241,14 @@ class TestInterchain(unittest.TestCase):
         self.assertTrue(response2.get("ok"), response2)
         self.assertEqual(response2.get("status"), 200, response2)
         jsonschema.validate(response2.get("response"), schema.bitcoin_interchain_at_rest_schema)
+
+    def test_get_existing_binance_interchain(self):
+        response1 = self.client.get_interchain_network("binance", BINANCE_INTERCHAIN_NAME_1)
+        response2 = self.client.get_interchain_network("binance", BINANCE_INTERCHAIN_NAME_2)
+        self.assertEqual(response1, {"status": 200, "ok": True, "response": BINANCE_INTERCHAIN_BODY})
+        self.assertTrue(response2.get("ok"), response2)
+        self.assertEqual(response2.get("status"), 200, response2)
+        jsonschema.validate(response2.get("response"), schema.binance_interchain_at_rest_schema)
 
     def test_get_non_existing_interchains(self):
         response = self.client.get_interchain_network("bitcoin", "doesntexist")
@@ -225,6 +283,15 @@ class TestInterchain(unittest.TestCase):
         jsonschema.validate(response.get("response"), schema.bitcoin_interchain_list_schema)
         # Check that our earlier created api key is in the output
         self.assertIn(BITCOIN_INTERCHAIN_BODY, response["response"]["interchains"], response)
+
+    def test_list_binance_interchains(self):
+        response = self.client.list_interchain_networks("binance")
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200, response)
+
+        jsonschema.validate(response.get("response"), schema.binance_interchain_list_schema)
+        # Check that our earlier created api key is in the output
+        self.assertIn(BINANCE_INTERCHAIN_BODY, response["response"]["interchains"], response)
 
     def test_list_bad_blockchain_interchains(self):
         response = self.client.list_interchain_networks("fakeblockchain")
@@ -281,18 +348,36 @@ class TestInterchain(unittest.TestCase):
         jsonschema.validate(response.get("response"), schema.bitcoin_interchain_at_rest_schema)
 
     def test_update_interchains_with_nonexistant_interchain_returns_404(self):
+        # attempt to update nonexistent chains:
         response1 = self.client.update_bitcoin_interchain("garbage")
         response2 = self.client.update_ethereum_interchain("garbage")
+        response3 = self.client.update_binance_interchain("garbage")
+        details_text = "The requested resource(s) cannot be found."
         self.assertEqual(
-            response1,
-            {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": "The requested resource(s) cannot be found."}}},
-            response1,
+            response1, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response1,
         )
         self.assertEqual(
-            response2,
-            {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": "The requested resource(s) cannot be found."}}},
-            response2,
+            response2, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response2,
         )
+        self.assertEqual(
+            response3, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response3,
+        )
+
+    def test_update_binance_interchain_only_updates_provided_fields(self):
+        before_body = self.client.get_interchain_network("binance", BINANCE_INTERCHAIN_NAME_2)["response"]
+        before_body["address"] = "tbnb1u06kxdru0we8at0ktd6q4c5qk80zwdyvhzrulk"
+        priv_key = "495bb2a3f229eb0abb2bf71a3dca56b31d60c128dfd81e9e907e5eedb67f19a0"
+        response = self.client.update_binance_interchain(BINANCE_INTERCHAIN_NAME_2, private_key=priv_key)
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200, response)
+        # Check that after changing the private key, the only thing that's changed is the address
+        self.assertEqual(response.get("response"), before_body, response)
+
+    def test_update_binance_interchain_returns_at_rest_object(self):
+        response = self.client.update_binance_interchain(BINANCE_INTERCHAIN_NAME_2, testnet=True)
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200, response)
+        jsonschema.validate(response.get("response"), schema.binance_interchain_at_rest_schema)
 
     # SIGN #
 
@@ -388,7 +473,26 @@ class TestInterchain(unittest.TestCase):
             response,
         )
 
-    # TODO Come up with a way to test signing bitcoin transactions with actual funds
+    def test_sign_binance_transaction_with_good_to_address(self):
+        good_addy = "tbnb1zesqcktldshz7tat9u74duc037frzwvdq83wan"  # has had txns & a balance.
+        response = self.client.sign_binance_transaction(name=BINANCE_INTERCHAIN_NAME_1, amount=1, to_address=good_addy)
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200, response)
+        jsonschema.validate(response.get("response"), schema.created_binance_transaction_schema)
+
+    def test_sign_binance_transaction_fails_with_bad_to_address(self):
+        response = self.client.sign_binance_transaction(name=BINANCE_INTERCHAIN_NAME_1, amount=1, to_address="bad_addy")
+        error_msg = "[BINANCE] Error signing transaction: 'NoneType' object is not iterable"
+        self.assertEqual(response, {"status": 400, "ok": False, "response": {"error": {"type": "BAD_REQUEST", "details": error_msg}}}, response)
+
+    def test_sign_binance_transaction_with_data(self):
+        good_addy = "tbnb1zesqcktldshz7tat9u74duc037frzwvdq83wan"
+        response = self.client.sign_binance_transaction(name=BINANCE_INTERCHAIN_NAME_1, amount=12345, to_address=good_addy, memo="banana")
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 200, response)
+        jsonschema.validate(response.get("response"), schema.created_binance_transaction_schema)
+
+    # TODO: Come up with a way to test signing bitcoin transactions with actual funds
 
     # DELETE #
 
@@ -418,6 +522,11 @@ class TestInterchain(unittest.TestCase):
                 self.client.delete_interchain_network("bitcoin", interchain)
             except Exception:
                 pass
+        for interchain in [BINANCE_INTERCHAIN_NAME_1, BINANCE_INTERCHAIN_NAME_2]:
+            try:
+                self.client.delete_interchain_network("binance", interchain)
+            except Exception:
+                pass
 
 
 def suite():
@@ -435,12 +544,18 @@ def suite():
     suite.addTest(TestInterchain("test_create_bitcoin_interchain_fails_with_bad_rpc_address"))
     suite.addTest(TestInterchain("test_create_bitcoin_interchain_fails_without_wif_private_key_or_testnet"))
     suite.addTest(TestInterchain("test_create_bitcoin_interchain_fails_with_bad_private_key"))
+    suite.addTest(TestInterchain("test_create_binance_interchain_with_values"))
+    suite.addTest(TestInterchain("test_create_binance_interchain_with_defaults"))
+    suite.addTest(TestInterchain("test_create_binance_interchain_fails_with_bad_node_address"))
+    suite.addTest(TestInterchain("test_create_binance_interchain_fails_with_bad_private_key"))
     suite.addTest(TestInterchain("test_get_existing_ethereum_interchain"))
     suite.addTest(TestInterchain("test_get_existing_bitcoin_interchain"))
+    suite.addTest(TestInterchain("test_get_existing_binance_interchain"))
     suite.addTest(TestInterchain("test_get_non_existing_interchains"))
     suite.addTest(TestInterchain("test_get_bad_blockchain_type"))
     suite.addTest(TestInterchain("test_list_ethereum_interchains"))
     suite.addTest(TestInterchain("test_list_bitcoin_interchains"))
+    suite.addTest(TestInterchain("test_list_binance_interchains"))
     suite.addTest(TestInterchain("test_list_bad_blockchain_interchains"))
     suite.addTest(TestInterchain("test_update_ethereum_interchain_only_updates_provided_fields"))
     suite.addTest(TestInterchain("test_update_ethereum_interchain_returns_at_rest_object"))
@@ -448,6 +563,8 @@ def suite():
     suite.addTest(TestInterchain("test_update_bitcoin_interchain_only_updates_provided_fields"))
     suite.addTest(TestInterchain("test_update_bitcoin_interchain_returns_at_rest_object"))
     suite.addTest(TestInterchain("test_update_interchains_with_nonexistant_interchain_returns_404"))
+    suite.addTest(TestInterchain("test_update_binance_interchain_only_updates_provided_fields"))
+    suite.addTest(TestInterchain("test_update_binance_interchain_returns_at_rest_object"))
     suite.addTest(TestInterchain("test_sign_ethereum_transaction_with_to_and_value"))
     suite.addTest(TestInterchain("test_sign_ethereum_transaction_with_data"))
     suite.addTest(TestInterchain("test_sign_ethereum_transaction_with_gas_price"))
@@ -456,6 +573,9 @@ def suite():
     suite.addTest(TestInterchain("test_sign_ethereum_transaction_with_all_values"))
     suite.addTest(TestInterchain("test_sign_ethereum_transaction_fails_with_bad_to_value"))
     suite.addTest(TestInterchain("test_sign_with_bitcoin_returns_not_enough_crypto"))
+    suite.addTest(TestInterchain("test_sign_binance_transaction_with_good_to_address"))
+    suite.addTest(TestInterchain("test_sign_binance_transaction_fails_with_bad_to_address"))
+    suite.addTest(TestInterchain("test_sign_binance_transaction_with_data"))
     suite.addTest(TestInterchain("test_delete_existing_network_is_successful"))
     suite.addTest(TestInterchain("test_delete_nonexisting_network_is_successful"))
     suite.addTest(TestInterchain("interchain_cleanup"))

@@ -205,11 +205,14 @@ class TestSmartContracts(unittest.TestCase):
     # INVOCATION #
 
     def wait_for_scheduler_invocation_1(self):
-        time.sleep(60)
+        time.sleep(55)
 
     def disable_schedule(self):
         self.assertTrue(self.client.update_smart_contract(SMART_CONTRACT_SCHEDULER_ID, disable_schedule=True).get("ok"))
         self.assertTrue(self.client.update_smart_contract(SMART_CONTRACT_CRON_ID, disable_schedule=True).get("ok"))
+
+    def wait_for_scheduler_invocation_2(self):
+        time.sleep(20)
 
     def test_successful_invocation_of_scheduler(self):
         transaction_invocation = self.client.query_transactions(SMART_CONTRACT_SCHEDULER_NAME, "*")
@@ -225,7 +228,7 @@ class TestSmartContracts(unittest.TestCase):
         self.assertGreater(CRON_INVOCATION_COUNT, 0)
         self.assertGreater(transaction_invocation["response"]["results"][0]["header"]["timestamp"], CREATION_TIMESTAMP)
 
-    def wait_for_scheduler_invocation_2(self):
+    def wait_for_scheduler_invocation_3(self):
         time.sleep(65)
 
     def test_disable_schedule_works_on_scheduler(self):
@@ -239,17 +242,24 @@ class TestSmartContracts(unittest.TestCase):
         self.assertEqual(CRON_INVOCATION_COUNT, transaction_invocation["response"]["total"])
 
     def test_successful_invocation_with_transactions(self):
-        args_transaction = self.client.create_transaction(SMART_CONTRACT_ARGS_NAME, "banana", tag="banana")
-        env_transaction = self.client.create_transaction(SMART_CONTRACT_ENV_NAME, "banana", tag="banana")
-        secrets_transaction = self.client.create_transaction(SMART_CONTRACT_SECRETS_NAME, "banana", tag="banana")
-        time.sleep(15)
-        args_query = self.client.query_transactions(SMART_CONTRACT_ARGS_NAME, "banana")
-        env_query = self.client.query_transactions(SMART_CONTRACT_ENV_NAME, "banana")
-        secrets_query = self.client.query_transactions(SMART_CONTRACT_SECRETS_NAME, "banana")
+        args_transaction = self.client.create_transaction(SMART_CONTRACT_ARGS_NAME, "banana")
+        env_transaction = self.client.create_transaction(SMART_CONTRACT_ENV_NAME, "banana")
+        secrets_transaction = self.client.create_transaction(SMART_CONTRACT_SECRETS_NAME, "banana")
+        time.sleep(30)
+        # Query for created transactions by invoker tag
+        args_query = self.client.query_transactions(
+            SMART_CONTRACT_ARGS_NAME, "@invoker:{{{}}}".format(args_transaction.get("response").get("transaction_id").replace("-", "\\-"))
+        )
+        env_query = self.client.query_transactions(
+            SMART_CONTRACT_ENV_NAME, "@invoker:{{{}}}".format(env_transaction.get("response").get("transaction_id").replace("-", "\\-"))
+        )
+        secrets_query = self.client.query_transactions(
+            SMART_CONTRACT_SECRETS_NAME, "@invoker:{{{}}}".format(secrets_transaction.get("response").get("transaction_id").replace("-", "\\-"))
+        )
+        # Check that the queries were successful and had a result with the invoker
         self.assertEqual(args_query["response"]["results"][0]["header"]["invoker"], args_transaction["response"]["transaction_id"])
         self.assertEqual(env_query["response"]["results"][0]["header"]["invoker"], env_transaction["response"]["transaction_id"])
         self.assertEqual(secrets_query["response"]["results"][0]["header"]["invoker"], secrets_transaction["response"]["transaction_id"])
-        time.sleep(10)
 
     # SMART CONTRACT LOGS #
 
@@ -381,9 +391,10 @@ def suite():
     suite.addTest(TestSmartContracts("test_update_contract_execution_order"))
     suite.addTest(TestSmartContracts("wait_for_scheduler_invocation_1"))
     suite.addTest(TestSmartContracts("disable_schedule"))
+    suite.addTest(TestSmartContracts("wait_for_scheduler_invocation_2"))
     suite.addTest(TestSmartContracts("test_successful_invocation_of_scheduler"))
     suite.addTest(TestSmartContracts("test_successful_invocation_of_cron"))
-    suite.addTest(TestSmartContracts("wait_for_scheduler_invocation_2"))
+    suite.addTest(TestSmartContracts("wait_for_scheduler_invocation_3"))
     suite.addTest(TestSmartContracts("test_disable_schedule_works_on_scheduler"))
     suite.addTest(TestSmartContracts("test_disable_schedule_works_on_cron"))
     suite.addTest(TestSmartContracts("test_successful_invocation_with_transactions"))

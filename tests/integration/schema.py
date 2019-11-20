@@ -144,6 +144,13 @@ created_bitcoin_transaction_schema = {
     "additionalProperties": False,
 }
 
+created_binance_transaction_schema = {
+    "type": "object",
+    "properties": {"signed": {"type": "string", "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$"}},
+    "required": ["signed"],
+    "additionalProperties": False,
+}
+
 create_transaction_schema = {
     "type": "object",
     "properties": {"transaction_id": {"type": "string", "pattern": _uuidv4_regex}},
@@ -189,6 +196,29 @@ bitcoin_interchain_at_rest_schema = {
 bitcoin_interchain_list_schema = {
     "type": "object",
     "properties": {"interchains": {"type": "array", "items": bitcoin_interchain_at_rest_schema}},
+    "required": ["interchains"],
+    "additionalProperties": False,
+}
+
+binance_interchain_at_rest_schema = {
+    "type": "object",
+    "properties": {
+        "version": {"type": "string", "enum": ["1"]},
+        "blockchain": {"type": "string", "enum": ["binance"]},
+        "testnet": {"type": "boolean"},
+        "name": {"type": "string"},
+        "node_url": {"type": "string"},
+        "rpc_port": {"type": "integer"},
+        "api_port": {"type": "integer"},
+        "address": {"type": "string"},
+    },
+    "required": ["version", "blockchain", "testnet", "name", "node_url", "rpc_port", "api_port", "address"],
+    "additionalProperties": False,
+}
+
+binance_interchain_list_schema = {
+    "type": "object",
+    "properties": {"interchains": {"type": "array", "items": binance_interchain_at_rest_schema}},
     "required": ["interchains"],
     "additionalProperties": False,
 }

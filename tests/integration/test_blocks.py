@@ -70,7 +70,7 @@ class TestBlocks(unittest.TestCase):
         )
 
     def test_query_blocks_by_id(self):
-        current_block = int((time.time() - 1432238220) / 5)
+        current_block = int((time.time() - 1432238220) / 5) + 1
         response1 = self.client.query_blocks("@block_id:[-inf {}]".format(current_block), sort_by="block_id", sort_ascending=True)
         response2 = self.client.query_blocks("@block_id:[-inf {}]".format(current_block), sort_by="block_id", sort_ascending=False)
         response3 = self.client.query_blocks("@block_id:[{} +inf]".format(current_block))  # Should not return any results
