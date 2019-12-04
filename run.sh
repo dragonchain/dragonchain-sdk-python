@@ -48,13 +48,16 @@ elif [ "$1" = "tests" ]; then
     fi
 elif [ "$1" = "lint" ]; then
     if [ "$2" = "no-async" ]; then
-        find . -name "*.py" -not -name "*async*" -exec python3 -m flake8 {} +
+        find dragonchain_sdk -name "*.py" -not -name "*async*" -exec python3 -m flake8 {} +
+        find tests -name "*.py" -not -name "*async*" -exec python3 -m flake8 {} +
     else
-        find . -name "*.py" -exec python3 -m flake8 {} +
-        if [ "$2" != "no-format" ]; then python3 -m black --check -l 150 -t py34 .; fi
+        find dragonchain_sdk -name "*.py" -exec python3 -m flake8 {} +
+        find tests -name "*.py" -exec python3 -m flake8 {} +
+        if [ "$2" != "no-format" ]; then python3 -m black --check -l 150 -t py34 dragonchain_sdk; python3 -m black --check -l 150 -t py34 tests; fi
     fi
 elif [ "$1" = "format" ]; then
-    python3 -m black -l 150 -t py34 .
+    python3 -m black -l 150 -t py34 dragonchain_sdk
+    python3 -m black -l 150 -t py34 tests
 elif [ "$1" = "bandit" ]; then
     python3 -m bandit -r dragonchain_sdk/
 elif [ "$1" = "build" ]; then

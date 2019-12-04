@@ -1,6 +1,17 @@
 Changelog
 =========
 
+4.2.0
+-----
+
+Features:
+  * Add api key permissioning support
+Documentation:
+  * Modify various client function docstrings to be more accurate
+Development:
+  * Add integration tests for api key permissions
+  * Modify run.sh to only act on code in dragonchain_sdk and tests
+
 4.1.0
 -----
 

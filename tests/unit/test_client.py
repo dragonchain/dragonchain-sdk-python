@@ -843,16 +843,19 @@ class TestClientMethods(unittest.TestCase):
             },
         )
 
-    def test_create_api_key_throws_with_nickname_not_str(self, mock_creds, mock_request):
+    def test_create_api_key_throws_with_type_errors(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.assertRaises(TypeError, self.client.create_api_key, 1234)
+        self.assertRaises(TypeError, self.client.create_api_key, "nickname", 1234)
 
     def test_create_api_key(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.client.create_api_key(nickname="nickname")
-        self.client.request.post.assert_called_once_with("/v1/api-key", {"nickname": "nickname"})
+        self.client.create_api_key(nickname="nickname", permissions_document={"version": "1", "default_allow": True, "permissions": {}})
+        self.client.request.post.assert_called_once_with(
+            "/v1/api-key", {"nickname": "nickname", "permissions_document": {"version": "1", "default_allow": True, "permissions": {}}}
+        )
 
-    def test_creaste_api_key_succeeds_without_nickname(self, mock_creds, mock_request):
+    def test_creaste_api_key_succeeds_without_params(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.create_api_key()
         self.client.request.post.assert_called_once_with("/v1/api-key", {})
@@ -880,18 +883,23 @@ class TestClientMethods(unittest.TestCase):
         self.client.list_api_keys()
         self.client.request.get.assert_called_once_with("/v1/api-key")
 
-    def test_update_api_key_throws_with_key_id_not_str(self, mock_creds, mock_request):
+    def test_update_api_key_throws_type_errors(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.update_api_key, 1234, "valid_nickname")
-
-    def test_update_api_key_throws_with_nickname_not_str(self, mock_creds, mock_request):
-        self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.update_api_key, "1234", 1)
+        self.assertRaises(TypeError, self.client.update_api_key, 1234)
+        self.assertRaises(TypeError, self.client.update_api_key, "1234", 1234)
+        self.assertRaises(TypeError, self.client.update_api_key, "1234", "nickname", 1234)
 
     def test_update_api_key_succeeds(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.client.update_api_key(key_id="id", nickname="newName")
-        self.client.request.put.assert_called_once_with("/v1/api-key/id", {"nickname": "newName"})
+        self.client.update_api_key(key_id="id", nickname="newName", permissions_document={"version": "1", "default_allow": True, "permissions": {}})
+        self.client.request.put.assert_called_once_with(
+            "/v1/api-key/id", {"nickname": "newName", "permissions_document": {"version": "1", "default_allow": True, "permissions": {}}}
+        )
+
+    def test_update_api_key_succeeds_with_defaults(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.update_api_key("key_id")
+        self.client.request.put.assert_called_once_with("/v1/api-key/key_id", {})
 
     def test_get_default_interchain_calls_correctly(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()

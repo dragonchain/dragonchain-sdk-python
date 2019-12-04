@@ -72,31 +72,43 @@ list_transaction_type_schema = {
 
 create_transaction_response_schema = {"type": "object", "properties": {"transaction_id": {"type": "string"}}}
 
+permissions_document_schema = {
+    "type": "object",
+    "properties": {"version": {"type": "string", "enum": ["1"]}, "default_allow": {"type": "boolean"}, "permissions": {"type": "object"}},
+    "required": ["version", "default_allow", "permissions"],
+    "additionalProperties": False,
+}
+
 api_key_create_schema = {
     "type": "object",
-    "properties": {"key": {"type": "string"}, "id": {"type": "string"}, "registration_time": {"type": "integer"}, "nickname": {"type": "string"}},
-    "required": ["key", "id", "registration_time"],
+    "properties": {
+        "key": {"type": "string"},
+        "id": {"type": "string"},
+        "registration_time": {"type": "integer"},
+        "nickname": {"type": "string"},
+        "root": {"type": "boolean"},
+        "permissions_document": permissions_document_schema,
+    },
+    "required": ["key", "id", "registration_time", "nickname", "root", "permissions_document"],
+    "additionalProperties": False,
+}
+
+api_key_generic_schema = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "registration_time": {"type": "integer"},
+        "nickname": {"type": "string"},
+        "root": {"type": "boolean"},
+        "permissions_document": permissions_document_schema,
+    },
+    "required": ["id", "registration_time", "nickname", "root", "permissions_document"],
     "additionalProperties": False,
 }
 
 api_key_list_schema = {
     "type": "object",
-    "properties": {
-        "keys": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "string"},
-                    "registration_time": {"type": "integer"},
-                    "nickname": {"type": "string"},
-                    "root": {"type": "boolean"},
-                },
-                "required": ["id", "registration_time"],
-                "additionalProperties": False,
-            },
-        }
-    },
+    "properties": {"keys": {"type": "array", "items": api_key_generic_schema}},
     "required": ["keys"],
     "additionalProperties": False,
 }
