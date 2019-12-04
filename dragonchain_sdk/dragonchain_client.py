@@ -19,7 +19,7 @@ from dragonchain_sdk import credentials
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from dragonchain_sdk.types import request_response, custom_index_fields_type  # noqa: F401 used by typing
+    from dragonchain_sdk.types import request_response, custom_index_fields_type, permissions_doc  # noqa: F401 used by typing
 
 
 class Client(object):
@@ -549,40 +549,67 @@ class Client(object):
         """
         return self.request.get("/v1/api-key")
 
-    def create_api_key(self, nickname: Optional[str] = None) -> "request_response":
+    def create_api_key(self, nickname: Optional[str] = None, permissions_document: Optional["permissions_doc"] = None) -> "request_response":
         """Generate a new HMAC API key
 
+        Args:
+            nickname (str, optional): The nickname to give to this new api key
+            permissions_document (dict, optional): The permissions dictionary to use with this key.
+                Check `the dragonchain core docs <https://dragonchain-core-docs.dragonchain.com/latest/usage/permissioning.html>`_ for more details
+
         Returns:
-            A new API key ID and key
+            The newly created api key
         """
-        body = {}
+        body = cast(Dict[str, Any], {})
         if nickname:
             if not isinstance(nickname, str):
                 raise TypeError('Parameter "nickname" must be of type str.')
-            body.update({"nickname": nickname})
+            body["nickname"] = nickname
+        if permissions_document:
+            if not isinstance(permissions_document, dict):
+                raise TypeError('Parameter "permissions_document" must be of type dict.')
+            body["permissions_document"] = permissions_document
         return self.request.post("/v1/api-key", body)
 
     def delete_api_key(self, key_id: str) -> "request_response":
         """Delete an existing HMAC API key
 
+        Args:
+            key_id (str): The id of the api key to delete
+
         Returns:
-            204 No Content on success
+            Generic success message
         """
         if not isinstance(key_id, str):
             raise TypeError('Parameter "key_id" must be of type str.')
         return self.request.delete("/v1/api-key/{}".format(key_id))
 
-    def update_api_key(self, key_id: str, nickname: str) -> "request_response":
+    def update_api_key(
+        self, key_id: str, nickname: Optional[str] = None, permissions_document: Optional["permissions_doc"] = None
+    ) -> "request_response":
         """Update the nickname of an existing HMAC API key
 
+        Args:
+            key_id (str): The id of the key to update
+            nickname (str, optional): The nickname to set on this api key
+            permissions_document (dict, optional): The permissions dictionary to set with this key.
+                Check `the dragonchain core docs <https://dragonchain-core-docs.dragonchain.com/latest/usage/permissioning.html>`_ for more details
+
         Returns:
-            success: True
+            The updated api key
         """
         if not isinstance(key_id, str):
             raise TypeError('Parameter "key_id" must be of type str.')
-        if not isinstance(nickname, str):
-            raise TypeError('Parameter "nickname" must be of type str.')
-        return self.request.put("/v1/api-key/{}".format(key_id), {"nickname": nickname})
+        body = cast(Dict[str, Any], {})
+        if nickname:
+            if not isinstance(nickname, str):
+                raise TypeError('Parameter "nickname" must be of type str.')
+            body["nickname"] = nickname
+        if permissions_document:
+            if not isinstance(permissions_document, dict):
+                raise TypeError('Parameter "permissions_document" must be of type dict.')
+            body["permissions_document"] = permissions_document
+        return self.request.put("/v1/api-key/{}".format(key_id), body)
 
     def get_smart_contract_object(self, key: str, smart_contract_id: Optional[str] = None) -> "request_response":
         """Retrieve data from the object storage of a smart contract
@@ -663,23 +690,25 @@ class Client(object):
     ) -> "request_response":
         """Creates a new custom transaction type.
 
-        Transaction Types can optionally link custom search index fields to your transactions for easier querying later.
-        A custom_index_field is a dictionary with 'path', 'field_name', 'type', and an optional 'options' dictionary:
-
-        path (str): the JSONPath of your transaction payload you would like to result form a search on the "key".
-        field_name (str): The field for this custom extracted value to be indexed under
-        type ('text', 'tag', or 'number'): The type of redisearch index to use for this field
-        options: (object) The redisearch options for this field
-        - no_index (bool) (all types) whether or not to index on this field, or simply make it sortable only if false
-        - separator (str) (tag only) what string should be used for the tag separator
-        - weight (number) (text only) The weight to give this text field when doing text queries
-        - no_stem (bool) (text only) Whether or not to allow search stemming in text searches on this field
-        - sortable (bool) (text and number only) Whether or not a search on the index can be sortable by this field
-        See redisearch for more details on these options: https://oss.redislabs.com/redisearch/Commands.html#field_options
-
         Args:
             transaction_type (str): transaction_type to update
-            custom_index_fields (optional): custom_index_fields to update. Ex.: [{"path":"a.b","field_name":"myField","type":"text","options":{"no_index":True}}]
+            custom_index_fields (optional): custom index fields to create. Ex.: ``[{"path":"a.b","field_name":"myField","type":"text","options":{"no_index":True}}]``
+
+                Transaction Types can optionally link custom search index fields to your transactions for easier querying later.
+                A custom_index_field is a dictionary with 'path', 'field_name', 'type', and an optional 'options' dictionary:
+
+                - path (str): the JSONPath of your transaction payload you would like to result form a search on the "key"
+                - field_name (str): The field for this custom extracted value to be indexed under
+                - type ('text', 'tag', or 'number'): The type of redisearch index to use for this field
+                - options: (object) The redisearch options for this field
+
+                    - no_index (bool) (all types) whether or not to index on this field, or simply make it sortable only if false
+                    - separator (str) (tag only) what string should be used for the tag separator
+                    - weight (number) (text only) The weight to give this text field when doing text queries
+                    - no_stem (bool) (text only) Whether or not to allow search stemming in text searches on this field
+                    - sortable (bool) (text and number only) Whether or not a search on the index can be sortable by this field
+
+                See `the redisearch docs <https://oss.redislabs.com/redisearch/Commands.html#field_options>`_ for more details on these options
 
         Raises:
             TypeError: with bad parameter types
@@ -691,8 +720,8 @@ class Client(object):
             custom_index_fields = []
         if not isinstance(transaction_type, str):
             raise TypeError('Parameter "transaction_type" must be of type str.')
-        if not isinstance(custom_index_fields, list):
-            raise TypeError('Parameter "custom_index_fields" must be of type list.')
+        if not isinstance(custom_index_fields, (list, set, tuple)):
+            raise TypeError('Parameter "custom_index_fields" must be iterable.')
         params = cast(Dict[str, Any], {"version": "2", "txn_type": transaction_type})
         if custom_index_fields:
             params["custom_indexes"] = _validate_and_build_custom_index_fields_array(custom_index_fields)

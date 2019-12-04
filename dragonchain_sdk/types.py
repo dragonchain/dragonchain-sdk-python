@@ -20,3 +20,4 @@ request_response = mypy_extensions.TypedDict("request_response", {"status": int,
 custom_index_fields_type = mypy_extensions.TypedDict(
     "custom_index_fields_type", {"path": str, "field_name": str, "type": str, "options": Dict[str, Any]}
 )
+permissions_doc = mypy_extensions.TypedDict("permissions_doc", {"version": str, "default_allow": bool, "permissions": Dict[str, Any]})

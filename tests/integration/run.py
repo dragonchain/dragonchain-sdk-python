@@ -19,9 +19,19 @@ from tests.integration import test_blocks
 from tests.integration import test_api_keys
 from tests.integration import test_misc
 from tests.integration import test_interchain
+from tests.integration import test_permissioning
 
 if __name__ == "__main__":
-    test_suites = [test_transaction_types, test_transactions, test_smart_contracts, test_blocks, test_api_keys, test_misc, test_interchain]
+    test_suites = [
+        test_transaction_types,
+        test_transactions,
+        test_smart_contracts,
+        test_blocks,
+        test_api_keys,
+        test_misc,
+        test_interchain,
+        test_permissioning,
+    ]
     # Make one suite and add all our tests
     suite = unittest.TestSuite()
     for test in test_suites:
