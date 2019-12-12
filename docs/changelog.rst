@@ -1,6 +1,13 @@
 Changelog
 =========
 
+4.2.1
+-----
+
+Development:
+  * Modify get status integration test schema to support new
+    ``indexingEnabled`` field
+
 4.2.0
 -----
 

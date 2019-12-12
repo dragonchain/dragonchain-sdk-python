@@ -123,8 +123,9 @@ get_status_schema = {
         "id": {"type": "string"},
         "level": {"type": "integer", "minimum": 1, "maximum": 5},
         "url": {"type": "string"},
+        "indexingEnabled": {"type": "boolean"},
     },
-    "required": ["version", "scheme", "encryptionAlgo", "hashAlgo", "id", "level", "url"],
+    "required": ["version", "scheme", "encryptionAlgo", "hashAlgo", "id", "level", "url", "indexingEnabled"],
     "additionalProperties": False,
 }
 
