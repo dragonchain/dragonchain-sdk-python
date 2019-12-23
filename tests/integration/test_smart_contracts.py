@@ -54,6 +54,25 @@ class TestSmartContracts(unittest.TestCase):
 
     # CREATE #
 
+    def test_create_contract_with_bad_secrets_fails(self):
+        _expected_fail_response = {
+            "status": 400,
+            "ok": False,
+            "response": {"error": {"type": "VALIDATION_ERROR", "details": "data.secrets must contain only specified properties"}},
+        }
+        response1 = self.client.create_smart_contract(
+            transaction_type="whatever", image="alpine:latest", cmd="uptime", secrets={"secret-key": "shouldn't work"}
+        )
+        response2 = self.client.create_smart_contract(
+            transaction_type="whatever", image="alpine:latest", cmd="uptime", secrets={"auth-key-id": "shouldn't work"}
+        )
+        response3 = self.client.create_smart_contract(
+            transaction_type="whatever", image="alpine:latest", cmd="uptime", secrets={"Doesn't work": "whatever"}
+        )
+        self.assertEqual(response1, _expected_fail_response, response1)
+        self.assertEqual(response2, _expected_fail_response, response2)
+        self.assertEqual(response2, _expected_fail_response, response3)
+
     def test_create_basic_contract(self):
         response = self.client.create_smart_contract(transaction_type=SMART_CONTRACT_BASIC_NAME, image="alpine:latest", cmd="uptime")
         self.assertTrue(response.get("ok"), response)
@@ -100,7 +119,7 @@ class TestSmartContracts(unittest.TestCase):
 
     def test_create_contract_with_secrets(self):
         response = self.client.create_smart_contract(
-            transaction_type=SMART_CONTRACT_SECRETS_NAME, image="alpine:latest", cmd="echo", args=["hello"], secrets={"mySecret": "super secret"}
+            transaction_type=SMART_CONTRACT_SECRETS_NAME, image="alpine:latest", cmd="echo", args=["hello"], secrets={"mysecret": "super secret"}
         )
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
@@ -163,6 +182,19 @@ class TestSmartContracts(unittest.TestCase):
 
     # UPDATE #
 
+    def test_update_contract_with_bad_secrets_fails(self):
+        _expected_fail_response = {
+            "status": 400,
+            "ok": False,
+            "response": {"error": {"type": "VALIDATION_ERROR", "details": "data.secrets must contain only specified properties"}},
+        }
+        response1 = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_ARGS_ID, secrets={"secret-key": "shouldn't work"})
+        response2 = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_ARGS_ID, secrets={"auth-key-id": "shouldn't work"})
+        response3 = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_ARGS_ID, secrets={"InvalidName": "shouldn't work"})
+        self.assertEqual(response1, _expected_fail_response, response1)
+        self.assertEqual(response2, _expected_fail_response, response2)
+        self.assertEqual(response2, _expected_fail_response, response3)
+
     def test_update_contract_with_image(self):
         response = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_ARGS_ID, image="busybox:latest")
         self.assertTrue(response.get("ok"), response)
@@ -188,12 +220,17 @@ class TestSmartContracts(unittest.TestCase):
         self.assertEqual(updated_smart_contract["response"]["env"]["bacon"], "tomato")
 
     def test_update_contract_with_secrets(self):
-        response = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_SECRETS_ID, secrets={"secret-banana": "bananas"})
+        response = self.client.update_smart_contract(
+            smart_contract_id=SMART_CONTRACT_SECRETS_ID, secrets={"secret-banana": "bananas", "mysecret": "mynewsecret"}
+        )
         self.assertTrue(response.get("ok"), response)
         self.assertEqual(response.get("status"), 202, response)
         time.sleep(20)
         updated_smart_contract = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_SECRETS_NAME)
-        self.assertIn("secret-banana", updated_smart_contract["response"]["existing_secrets"])
+        # Check new secret was added
+        self.assertIn("secret-banana", updated_smart_contract["response"]["existing_secrets"], updated_smart_contract["response"]["existing_secrets"])
+        # Check existing secret is still there
+        self.assertIn("mysecret", updated_smart_contract["response"]["existing_secrets"], updated_smart_contract["response"]["existing_secrets"])
 
     def test_update_contract_execution_order(self):
         response = self.client.update_smart_contract(smart_contract_id=SMART_CONTRACT_ORDER_ID, execution_order="parallel")
@@ -374,6 +411,7 @@ class TestSmartContracts(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(TestSmartContracts("test_create_contract_with_bad_secrets_fails"))
     suite.addTest(TestSmartContracts("test_create_basic_contract"))
     suite.addTest(TestSmartContracts("test_create_contract_with_args"))
     suite.addTest(TestSmartContracts("test_create_contract_with_custom_env"))
@@ -384,6 +422,7 @@ def suite():
     suite.addTest(TestSmartContracts("test_get_contract_with_transcation_type"))
     suite.addTest(TestSmartContracts("test_get_contract_with_contract_id"))
     suite.addTest(TestSmartContracts("test_list_smart_contracts"))
+    suite.addTest(TestSmartContracts("test_update_contract_with_bad_secrets_fails"))
     suite.addTest(TestSmartContracts("test_update_contract_with_image"))
     suite.addTest(TestSmartContracts("test_update_contract_with_args"))
     suite.addTest(TestSmartContracts("test_update_contract_with_env"))

@@ -119,7 +119,7 @@ class TestTransactions(unittest.TestCase):
     def test_create_transaction_fails_without_transaction_type(self):
         response = self.client.create_transaction(transaction_type="doesnotexist", payload="")
         expected_response = {
-            "status": 403,
+            "status": 400,
             "ok": False,
             "response": {
                 "error": {

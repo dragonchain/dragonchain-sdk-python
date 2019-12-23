@@ -123,8 +123,9 @@ get_status_schema = {
         "id": {"type": "string"},
         "level": {"type": "integer", "minimum": 1, "maximum": 5},
         "url": {"type": "string"},
+        "indexingEnabled": {"type": "boolean"},
     },
-    "required": ["version", "scheme", "encryptionAlgo", "hashAlgo", "id", "level", "url"],
+    "required": ["version", "scheme", "encryptionAlgo", "hashAlgo", "id", "level", "url", "indexingEnabled"],
     "additionalProperties": False,
 }
 
@@ -134,11 +135,10 @@ get_blockchain_addresses_schema = {
         "eth_mainnet": {"type": "string", "pattern": _ethereum_address_regex},
         "eth_ropsten": {"type": "string", "pattern": _ethereum_address_regex},
         "etc_mainnet": {"type": "string", "pattern": _ethereum_address_regex},
-        "etc_morden": {"type": "string", "pattern": _ethereum_address_regex},
         "btc_mainnet": {"type": "string"},
         "btc_testnet3": {"type": "string"},
     },
-    "required": ["eth_mainnet", "eth_ropsten", "etc_mainnet", "etc_morden", "btc_mainnet", "btc_testnet3"],
+    "required": ["eth_mainnet", "eth_ropsten", "etc_mainnet", "btc_mainnet", "btc_testnet3"],
     "additionalProperties": False,
 }
 

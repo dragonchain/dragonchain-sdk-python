@@ -883,7 +883,7 @@ class Client(object):
             private_key (str, optional): The base64 or hex encoded private key. Will generate randomly if not provided
             rpc_address (str, optional): The endpoint of the ethereum RPC node to use (i.e. http://my-node:8545)
             chain_id (int, optional): The ethereum chain id to use. Will automatically derive this if providing a custom rpc_address
-                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet|62=ETC Morden
+                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet
 
         Raises:
             TypeError: with bad parameters
@@ -918,7 +918,7 @@ class Client(object):
             private_key (str, optional): The base64 or hex encoded private key
             rpc_address (str, optional): The endpoint of the ethereum RPC node to use (i.e. http://my-node:8545)
             chain_id (int, optional): The ethereum chain id to use. Will automatically derive this if providing a custom rpc_address
-                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet|2=ETC Morden
+                Without providing a custom rpc_address, Dragonchain manages and supports: 1=ETH Mainnet|3=ETH Ropsten|61=ETC Mainnet
 
         Raises:
             TypeError: with bad parameters
@@ -1227,7 +1227,6 @@ class Client(object):
                 ETH_MAINNET
                 ETH_ROPSTEN
                 ETC_MAINNET
-                ETC_MORDEN
 
             to (str): hex of the address to send to
             value (str): hex value (in wei) to send
@@ -1245,7 +1244,7 @@ class Client(object):
         logger.warning(
             "This method is deprecated. It will continue to work for legacy chains, but will not work on any new chains. Use sign_ethereum_transaction instead"
         )
-        valid_networks = ["ETH_MAINNET", "ETH_ROPSTEN", "ETC_MAINNET", "ETC_MORDEN"]
+        valid_networks = ["ETH_MAINNET", "ETH_ROPSTEN", "ETC_MAINNET"]
         if network not in valid_networks:
             raise ValueError('Parameter "network" must be one of {}.'.format(valid_networks))
         transaction = _build_ethereum_transaction_body(to=to, value=value, data=data, gas_price=gas_price, gas=gas)

@@ -1,6 +1,15 @@
 Changelog
 =========
 
+4.2.1
+-----
+
+Development:
+  * Modify get status integration test schema to support new
+    ``indexingEnabled`` field
+  * Add/modify integration tests for new smart contract secret restrictions
+  * Deprecate ETC Testnet (morden)
+
 4.2.0
 -----
 
