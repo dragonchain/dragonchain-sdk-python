@@ -126,7 +126,7 @@ class TestInterchain(unittest.TestCase):
                 "response": {
                     "error": {
                         "type": "BAD_REQUEST",
-                        "details": "If an rpc address is not provided, a valid chain id must be provided. ETH_MAIN = 1, ETH_ROPSTEN = 3, ETC_MAIN = 61, ETC_MORDEN = 62",  # noqa: B950
+                        "details": "If an rpc address is not provided, a valid chain id must be provided. ETH_MAIN = 1, ETH_ROPSTEN = 3, ETC_MAIN = 61",
                     }
                 },
             },
