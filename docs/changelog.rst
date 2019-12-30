@@ -1,6 +1,12 @@
 Changelog
 =========
 
+4.2.2
+-----
+
+Development:
+  * Fix tests for python 3.8.1
+
 4.2.1
 -----
 
