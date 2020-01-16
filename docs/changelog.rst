@@ -7,7 +7,7 @@ Changelog
 Development:
   * Fix installation requirements for python 3.4 testing
   * Fix linting error with new bugbear version
-  * Remove duplicate interation test
+  * Remove duplicate integration test and fix openfaas logs schema for newer openfaas versions
 
 4.2.2
 -----

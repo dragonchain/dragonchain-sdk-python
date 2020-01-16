@@ -21,6 +21,7 @@ smart_contract_logs_schema = {
             "items": {
                 "properties": {
                     "name": {"type": "string"},
+                    "namespace": {"type": "string"},
                     "instance": {"type": "string"},
                     "timestamp": {"type": "string"},
                     "text": {"type": "string"},
