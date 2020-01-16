@@ -193,7 +193,7 @@ def _get_credentials_as_smart_contract() -> Tuple[str, str]:
         auth_key = open(os.path.join(base_path, "sc-{}-secret-key".format(os.environ.get("SMART_CONTRACT_ID"))), "r").read()
         auth_key_id = open(os.path.join(base_path, "sc-{}-auth-key-id".format(os.environ.get("SMART_CONTRACT_ID"))), "r").read()
         return auth_key_id, auth_key
-    except (OSError, IOError, FileNotFoundError):
+    except OSError:
         return "", ""
 
 

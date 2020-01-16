@@ -1,6 +1,14 @@
 Changelog
 =========
 
+4.2.3
+-----
+
+Development:
+  * Fix installation requirements for python 3.4 testing
+  * Fix linting error with new bugbear version
+  * Remove duplicate interation test
+
 4.2.2
 -----
 

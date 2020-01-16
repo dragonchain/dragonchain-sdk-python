@@ -11,6 +11,7 @@ flake8-assertive
 flake8-builtins
 flake8-import-order
 bandit
+pyyaml<=5.2;python_version<"3.5"
 sphinx
 sphinx_rtd_theme
 twine
