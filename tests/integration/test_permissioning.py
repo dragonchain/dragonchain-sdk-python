@@ -869,7 +869,6 @@ def suite():
     suite.addTest(TestPermissioning("global_allow_read_works_with_all_read_functions"))
     suite.addTest(TestPermissioning("global_allow_update_works_with_all_update_functions"))
     suite.addTest(TestPermissioning("global_allow_delete_works_with_all_delete_functions"))
-    suite.addTest(TestPermissioning("global_allow_delete_works_with_all_delete_functions"))
     suite.addTest(TestPermissioning("group_allow_create_works_with_group_create_functions"))
     suite.addTest(TestPermissioning("group_allow_read_works_with_group_read_functions"))
     suite.addTest(TestPermissioning("group_allow_update_works_with_group_update_functions"))
