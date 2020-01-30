@@ -389,6 +389,14 @@ class TestSmartContracts(unittest.TestCase):
         deleted_fetch = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_CRON_NAME)
         self.assertEqual(_expected_not_found_response, deleted_fetch)
 
+    def test_delete_contract_by_transaction_type(self):
+        response = self.client.delete_smart_contract(transaction_type=SMART_CONTRACT_ENV_NAME)
+        self.assertTrue(response.get("ok"), response)
+        self.assertEqual(response.get("status"), 202, response)
+        time.sleep(20)
+        deleted_fetch = self.client.get_smart_contract(transaction_type=SMART_CONTRACT_ENV_NAME)
+        self.assertEqual(_expected_not_found_response, deleted_fetch)
+
     def smart_contract_clean_up(self):
         contracts = [
             (SMART_CONTRACT_BASIC_ID, SMART_CONTRACT_BASIC_NAME),

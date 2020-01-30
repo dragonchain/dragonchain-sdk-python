@@ -353,15 +353,9 @@ class TestInterchain(unittest.TestCase):
         response2 = self.client.update_ethereum_interchain("garbage")
         response3 = self.client.update_binance_interchain("garbage")
         details_text = "The requested resource(s) cannot be found."
-        self.assertEqual(
-            response1, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response1,
-        )
-        self.assertEqual(
-            response2, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response2,
-        )
-        self.assertEqual(
-            response3, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response3,
-        )
+        self.assertEqual(response1, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response1)
+        self.assertEqual(response2, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response2)
+        self.assertEqual(response3, {"status": 404, "ok": False, "response": {"error": {"type": "NOT_FOUND", "details": details_text}}}, response3)
 
     def test_update_binance_interchain_only_updates_provided_fields(self):
         before_body = self.client.get_interchain_network("binance", BINANCE_INTERCHAIN_NAME_2)["response"]

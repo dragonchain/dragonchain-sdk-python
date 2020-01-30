@@ -304,11 +304,12 @@ class Client(object):
 
         return self.request.put("/v1/contract/{}".format(smart_contract_id), body)
 
-    def delete_smart_contract(self, smart_contract_id: str) -> "request_response":
+    def delete_smart_contract(self, smart_contract_id: Optional[str] = None, transaction_type: Optional[str] = None) -> "request_response":
         """Delete an existing contract
 
         Args:
-            smart_contract_id (str): Transaction type of the contract to delete
+            smart_contract_id (str, optional): Contract ID of the contract to delete
+            transaction_type (str, optional): Transaction type of the contract to delete
 
         Raises:
             TypeError: with bad parameter types
@@ -316,9 +317,17 @@ class Client(object):
         Returns:
             The results of the delete request
         """
-        if not isinstance(smart_contract_id, str):
-            raise TypeError('Parameter "state" must be of type str.')
-        return self.request.delete("/v1/contract/{}".format(smart_contract_id))
+        if smart_contract_id and transaction_type:
+            raise TypeError('Only one of "smart_contract_id" or "transaction_type" can be specified')
+        if smart_contract_id and not isinstance(smart_contract_id, str):
+            raise TypeError('Parameter "smart_contract_id" must be of type str.')
+        if transaction_type and not isinstance(transaction_type, str):
+            raise TypeError('Parameter "transaction_type" must be of type str.')
+        if smart_contract_id:
+            return self.request.delete("/v1/contract/{}".format(smart_contract_id))
+        if transaction_type:
+            return self.request.delete("/v1/contract/txn_type/{}".format(transaction_type))
+        raise TypeError('At least one of "smart_contract_id" or "transaction_type" must be supplied')
 
     def query_transactions(
         self,

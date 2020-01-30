@@ -83,7 +83,7 @@ query_blocks = frozenset(
 create_bitcoin_interchain = frozenset(
     {
         "fn": "create_bitcoin_interchain",
-        "params": ("name", True, "a",),
+        "params": ("name", True, "a"),
         "permission_name": "create_interchain",
         "permission_group": "interchains",
         "permission_type": "create",
@@ -110,7 +110,7 @@ sign_bitcoin_transaction = frozenset(
 create_ethereum_interchain = frozenset(
     {
         "fn": "create_ethereum_interchain",
-        "params": ("name", "a",),
+        "params": ("name", "a"),
         "permission_name": "create_interchain",
         "permission_group": "interchains",
         "permission_type": "create",
@@ -128,7 +128,7 @@ update_ethereum_interchain = frozenset(
 sign_ethereum_transaction = frozenset(
     {
         "fn": "sign_ethereum_transaction",
-        "params": ("name", "0x0000000000000000000000000000000000000000", "0x0",),
+        "params": ("name", "0x0000000000000000000000000000000000000000", "0x0"),
         "permission_name": "create_interchain_transaction",
         "permission_group": "interchains",
         "permission_type": "create",
@@ -137,7 +137,7 @@ sign_ethereum_transaction = frozenset(
 create_binance_interchain = frozenset(
     {
         "fn": "create_binance_interchain",
-        "params": ("name", True, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",),
+        "params": ("name", True, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
         "permission_name": "create_interchain",
         "permission_group": "interchains",
         "permission_type": "create",
@@ -155,7 +155,7 @@ update_binance_interchain = frozenset(
 sign_binance_transaction = frozenset(
     {
         "fn": "sign_binance_transaction",
-        "params": ("name", 1, "abc",),
+        "params": ("name", 1, "abc"),
         "permission_name": "create_interchain_transaction",
         "permission_group": "interchains",
         "permission_type": "create",
@@ -164,7 +164,7 @@ sign_binance_transaction = frozenset(
 get_interchain_network = frozenset(
     {
         "fn": "get_interchain_network",
-        "params": ("bitcoin", "whatever",),
+        "params": ("bitcoin", "whatever"),
         "permission_name": "get_interchain",
         "permission_group": "interchains",
         "permission_type": "read",
@@ -173,7 +173,7 @@ get_interchain_network = frozenset(
 delete_interchain_network = frozenset(
     {
         "fn": "delete_interchain_network",
-        "params": ("bitcoin", "whatever",),
+        "params": ("bitcoin", "whatever"),
         "permission_name": "delete_interchain",
         "permission_group": "interchains",
         "permission_type": "delete",
@@ -191,7 +191,7 @@ list_interchain_networks = frozenset(
 set_default_interchain_network = frozenset(
     {
         "fn": "set_default_interchain_network",
-        "params": ("bitcoin", "whatever",),
+        "params": ("bitcoin", "whatever"),
         "permission_name": "set_default_interchain",
         "permission_group": "interchains",
         "permission_type": "create",
@@ -218,7 +218,7 @@ create_bitcoin_transaction = frozenset(
 create_ethereum_transaction = frozenset(
     {
         "fn": "create_ethereum_transaction",
-        "params": ("ETH_MAINNET", "0x0000000000000000000000000000000000000000", "0x0",),
+        "params": ("ETH_MAINNET", "0x0000000000000000000000000000000000000000", "0x0"),
         "permission_name": "create_interchain_transaction_legacy",
         "permission_group": "interchains",
         "permission_type": "create",
@@ -268,7 +268,7 @@ list_smart_contracts = frozenset(
 create_smart_contract = frozenset(
     {
         "fn": "create_smart_contract",
-        "params": ("type", "blah", "cmd",),
+        "params": ("type", "blah", "cmd"),
         "permission_name": "create_contract",
         "permission_group": "contracts",
         "permission_type": "create",
@@ -295,7 +295,7 @@ delete_smart_contract = frozenset(
 get_smart_contract_object = frozenset(
     {
         "fn": "get_smart_contract_object",
-        "params": ("key", "id",),
+        "params": ("key", "id"),
         "permission_name": "get_contract_object",
         "permission_group": "contracts",
         "permission_type": "read",
@@ -304,7 +304,7 @@ get_smart_contract_object = frozenset(
 list_smart_contract_objects = frozenset(
     {
         "fn": "list_smart_contract_objects",
-        "params": ("key", "id",),
+        "params": ("key", "id"),
         "permission_name": "list_contract_objects",
         "permission_group": "contracts",
         "permission_type": "read",
@@ -351,7 +351,7 @@ delete_transaction_type = frozenset(
 create_transaction = frozenset(
     {
         "fn": "create_transaction",
-        "params": ("mytype", "payload",),
+        "params": ("mytype", "payload"),
         "permission_name": "create_transaction",
         "permission_group": "transactions",
         "permission_type": "create",
@@ -360,7 +360,7 @@ create_transaction = frozenset(
 query_transactions = frozenset(
     {
         "fn": "query_transactions",
-        "params": ("type", "querystr",),
+        "params": ("type", "querystr"),
         "permission_name": "query_transactions",
         "permission_group": "transactions",
         "permission_type": "read",
@@ -622,8 +622,7 @@ class TestPermissioning(unittest.TestCase):
         for group in permission_groups:
             # Check default true, allow false
             setup = self.client.update_api_key(
-                PERMISSION_TESTING_KEY_ID,
-                permissions_document={"version": "1", "default_allow": True, "permissions": {group: {"allow_read": False}}},
+                PERMISSION_TESTING_KEY_ID, permissions_document={"version": "1", "default_allow": True, "permissions": {group: {"allow_read": False}}}
             )
             self.assertTrue(setup.get("ok"), setup)
             methods = get_permission_group_functions(group).intersection(get_permission_type_functions("read"))
@@ -633,8 +632,7 @@ class TestPermissioning(unittest.TestCase):
                 self.assertEqual(response.get("status"), 403, method)
             # Check default false, allow true
             setup = self.client.update_api_key(
-                PERMISSION_TESTING_KEY_ID,
-                permissions_document={"version": "1", "default_allow": False, "permissions": {group: {"allow_read": True}}},
+                PERMISSION_TESTING_KEY_ID, permissions_document={"version": "1", "default_allow": False, "permissions": {group: {"allow_read": True}}}
             )
             self.assertTrue(setup.get("ok"), setup)
             for method in methods:

@@ -1,9 +1,11 @@
 Changelog
 =========
 
-4.2.2
+4.3.0
 -----
 
+Features:
+  * Allow for deleting of smart contracts by transaction type
 Development:
   * Fix tests for python 3.8.1
   * Fix installation requirements for python 3.4 testing

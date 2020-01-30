@@ -461,12 +461,29 @@ class TestClientMethods(unittest.TestCase):
 
     def test_delete_smart_contract_raises_type_error(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.delete_smart_contract, {})
+        self.assertRaises(TypeError, self.client.delete_smart_contract, 1)
+
+    def test_delete_smart_contract_raises_type_error_when_txn_type_is_not_str(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.delete_smart_contract, None, 1)
+
+    def test_delete_smart_contract_raises_type_error_when_nothing_specified(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.delete_smart_contract)
+
+    def test_delete_smart_contract_raises_type_error_when_both_values_present(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.delete_smart_contract, "some_id", "some_name")
 
     def test_delete_smart_contract_calls_delete(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.delete_smart_contract(smart_contract_id="some_id")
         self.client.request.delete.assert_called_once_with("/v1/contract/some_id")
+
+    def test_delete_smart_contract_calls_delete_with_transaction_type(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.delete_smart_contract(transaction_type="some_name")
+        self.client.request.delete.assert_called_once_with("/v1/contract/txn_type/some_name")
 
     def test_query_transactions_calls_get_with_params(self, mock_creds, mock_request):
         mock_request.Request.return_value.generate_query_string.return_value = "?whatever"
