@@ -6,11 +6,13 @@ Changelog
 
 Features:
   * Allow for deleting of smart contracts by transaction type
+  * Add support for publishing signed interchain transactions
 Development:
   * Fix tests for python 3.8.1
   * Fix installation requirements for python 3.4 testing
   * Fix linting error with new bugbear version
   * Remove duplicate integration test and fix openfaas logs schema for newer openfaas versions
+  * Remove codeowners
 
 4.2.1
 -----

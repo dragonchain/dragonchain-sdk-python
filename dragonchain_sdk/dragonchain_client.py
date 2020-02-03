@@ -1187,6 +1187,30 @@ class Client(object):
         """
         return self.request.get("/v1/interchains/default")
 
+    def publish_interchain_transaction(self, blockchain: str, name: str, signed_transaction: str) -> "request_response":
+        """Publish an interchain transaction that's already been signed
+
+        Args:
+            blockchain (str): The blockchain type to set (i.e. 'bitcoin', 'ethereum')
+            name (str): The name of the that blockchain's network to use (set when creating the network)
+            signed_transaction (str): Signed transaction string (return from sign_<network>_transaction function)
+
+        Raises:
+            TypeError: with bad parameter type
+
+        Returns:
+            The transaction hash (or equivalent) of the published transaction
+        """
+        if not isinstance(blockchain, str):
+            raise TypeError('Parameter "blockchain" must be of type str.')
+        if not isinstance(name, str):
+            raise TypeError('Parameter "name" must be of type str.')
+        if not isinstance(signed_transaction, str):
+            raise TypeError('Parameter "signed_transaction" must be of type str.')
+        return self.request.post(
+            "/v1/interchains/transaction/publish", {"version": "1", "blockchain": blockchain, "name": name, "signed_txn": signed_transaction}
+        )
+
     def create_bitcoin_transaction(
         self,
         network: str,

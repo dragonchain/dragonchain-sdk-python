@@ -487,6 +487,7 @@ class TestInterchain(unittest.TestCase):
         jsonschema.validate(response.get("response"), schema.created_binance_transaction_schema)
 
     # TODO: Come up with a way to test signing bitcoin transactions with actual funds
+    # TODO: Come up with a way to test publishing interchain transactions
 
     # DELETE #
 
