@@ -1,4 +1,4 @@
-# Copyright 2019 Dragonchain, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2020 Dragonchain, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -193,7 +193,7 @@ def _get_credentials_as_smart_contract() -> Tuple[str, str]:
         auth_key = open(os.path.join(base_path, "sc-{}-secret-key".format(os.environ.get("SMART_CONTRACT_ID"))), "r").read()
         auth_key_id = open(os.path.join(base_path, "sc-{}-auth-key-id".format(os.environ.get("SMART_CONTRACT_ID"))), "r").read()
         return auth_key_id, auth_key
-    except (OSError, IOError, FileNotFoundError):
+    except OSError:
         return "", ""
 
 

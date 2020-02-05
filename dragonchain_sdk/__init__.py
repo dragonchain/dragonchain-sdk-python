@@ -1,4 +1,4 @@
-# Copyright 2019 Dragonchain, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2020 Dragonchain, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -16,7 +16,7 @@ from typing import Optional, Any
 from dragonchain_sdk import dragonchain_client
 
 __author__ = "Dragonchain, Inc."
-__version__ = "4.2.1"
+__version__ = "4.3.0"
 
 ASYNC_SUPPORT = False
 

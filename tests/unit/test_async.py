@@ -1,4 +1,4 @@
-# Copyright 2019 Dragonchain, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2020 Dragonchain, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,6 +17,8 @@ import dragonchain_sdk
 from dragonchain_sdk import exceptions
 from tests import unit
 
+if unit.PY38:
+    from unittest.mock import AsyncMock
 if unit.PY36:
     from unittest.mock import MagicMock, patch
 else:
@@ -113,8 +115,9 @@ class TestAsync(unittest.TestCase):
         mock_return_json = asyncio.Future()
         mock_return_json.set_result({"error": "some error"})
         if unit.PY38:
+            mock_request.session.request.return_value = AsyncMock()
             mock_request.session.request.return_value.__aenter__.return_value.status = 400
-            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_return_json
+            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_return_json.result()
         else:
             mock_request.session.request.return_value = AsyncContextManagerMock(
                 aenter_return=MagicMock(status=400, json=MagicMock(return_value=mock_return_json))
@@ -130,8 +133,9 @@ class TestAsync(unittest.TestCase):
         mock_return_json = asyncio.Future()
         mock_return_json.set_result({"test": "object"})
         if unit.PY38:
+            mock_request.session.request.return_value = AsyncMock()
             mock_request.session.request.return_value.__aenter__.return_value.status = 200
-            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_return_json
+            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_return_json.result()
         else:
             mock_request.session.request.return_value = AsyncContextManagerMock(
                 aenter_return=MagicMock(status=200, json=MagicMock(return_value=mock_return_json))
@@ -147,8 +151,9 @@ class TestAsync(unittest.TestCase):
         mock_return_text = asyncio.Future()
         mock_return_text.set_result('{"test": "object"}')
         if unit.PY38:
+            mock_request.session.request.return_value = AsyncMock()
             mock_request.session.request.return_value.__aenter__.return_value.status = 200
-            mock_request.session.request.return_value.__aenter__.return_value.text.return_value = mock_return_text
+            mock_request.session.request.return_value.__aenter__.return_value.text.return_value = mock_return_text.result()
         else:
             mock_request.session.request.return_value = AsyncContextManagerMock(
                 aenter_return=MagicMock(status=200, text=MagicMock(return_value=mock_return_text))
@@ -164,8 +169,9 @@ class TestAsync(unittest.TestCase):
         mock_fail_json = asyncio.Future()
         mock_fail_json.set_exception(RuntimeError("JSON Parse Error"))
         if unit.PY38:
+            mock_request.session.request.return_value = AsyncMock()
             mock_request.session.request.return_value.__aenter__.return_value.status = 200
-            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_fail_json
+            mock_request.session.request.return_value.__aenter__.return_value.json.side_effect = mock_fail_json.exception()
             mock_request.session.request.return_value.__aexit__.return_value = True
         else:
             mock_request.session.request.return_value = AsyncContextManagerMock(
@@ -185,8 +191,9 @@ class TestAsync(unittest.TestCase):
         mock_fail_json = asyncio.Future()
         mock_fail_json.set_exception(RuntimeError("JSON Parse Error"))
         if unit.PY38:
+            mock_request.session.request.return_value = AsyncMock()
             mock_request.session.request.return_value.__aenter__.return_value.status = 200
-            mock_request.session.request.return_value.__aenter__.return_value.json.return_value = mock_fail_json
+            mock_request.session.request.return_value.__aenter__.return_value.json.side_effect = mock_fail_json.exception()
             mock_request.session.request.return_value.__aexit__.return_value = False
         else:
             mock_request.session.request.return_value = AsyncContextManagerMock(

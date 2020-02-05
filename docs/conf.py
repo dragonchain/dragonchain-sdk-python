@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "Dragonchain Python SDK"
-copyright = "2019, Dragonchain, Inc."  # noqa: A001
+copyright = "2020, Dragonchain, Inc."  # noqa: A001
 author = "Dragonchain, Inc."
 
 # The short X.Y version

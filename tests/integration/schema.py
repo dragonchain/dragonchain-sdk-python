@@ -1,4 +1,4 @@
-# Copyright 2019 Dragonchain, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2020 Dragonchain, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -21,6 +21,7 @@ smart_contract_logs_schema = {
             "items": {
                 "properties": {
                     "name": {"type": "string"},
+                    "namespace": {"type": "string"},
                     "instance": {"type": "string"},
                     "timestamp": {"type": "string"},
                     "text": {"type": "string"},

@@ -1,4 +1,4 @@
-# Copyright 2019 Dragonchain, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2020 Dragonchain, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -143,7 +143,7 @@ class TestBlocks(unittest.TestCase):
         expected_response = {
             "status": 400,
             "ok": False,
-            "response": {"error": {"type": "BAD_REQUEST", "details": "Syntax error at offset 7 near 'invalid'"}},
+            "response": {"error": {"type": "BAD_REQUEST", "details": "Syntax error at offset 7 near invalid"}},
         }
         self.assertEqual(response, expected_response)
 

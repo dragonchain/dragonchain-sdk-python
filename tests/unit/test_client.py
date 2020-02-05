@@ -1,4 +1,4 @@
-# Copyright 2019 Dragonchain, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2020 Dragonchain, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -461,12 +461,29 @@ class TestClientMethods(unittest.TestCase):
 
     def test_delete_smart_contract_raises_type_error(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
-        self.assertRaises(TypeError, self.client.delete_smart_contract, {})
+        self.assertRaises(TypeError, self.client.delete_smart_contract, 1)
+
+    def test_delete_smart_contract_raises_type_error_when_txn_type_is_not_str(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.delete_smart_contract, None, 1)
+
+    def test_delete_smart_contract_raises_type_error_when_nothing_specified(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.delete_smart_contract)
+
+    def test_delete_smart_contract_raises_type_error_when_both_values_present(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.delete_smart_contract, "some_id", "some_name")
 
     def test_delete_smart_contract_calls_delete(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
         self.client.delete_smart_contract(smart_contract_id="some_id")
         self.client.request.delete.assert_called_once_with("/v1/contract/some_id")
+
+    def test_delete_smart_contract_calls_delete_with_transaction_type(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.delete_smart_contract(transaction_type="some_name")
+        self.client.request.delete.assert_called_once_with("/v1/contract/txn_type/some_name")
 
     def test_query_transactions_calls_get_with_params(self, mock_creds, mock_request):
         mock_request.Request.return_value.generate_query_string.return_value = "?whatever"
@@ -915,6 +932,19 @@ class TestClientMethods(unittest.TestCase):
         self.client = dragonchain_sdk.create_client()
         self.client.set_default_interchain_network("a", "b")
         self.client.request.post.assert_called_once_with("/v1/interchains/default", {"version": "1", "blockchain": "a", "name": "b"})
+
+    def test_publish_interchain_transaction_throws_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.publish_interchain_transaction, 1, "b", "c")
+        self.assertRaises(TypeError, self.client.publish_interchain_transaction, "a", 2, "c")
+        self.assertRaises(TypeError, self.client.publish_interchain_transaction, "a", "b", 3)
+
+    def test_publish_interchain_transaction_calls_correctly(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        -self.client.publish_interchain_transaction("a", "b", "c")
+        self.client.request.post.assert_called_once_with(
+            "/v1/interchains/transaction/publish", {"version": "1", "blockchain": "a", "name": "b", "signed_txn": "c"}
+        )
 
     def test_list_interchain_throws_correctly(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()
