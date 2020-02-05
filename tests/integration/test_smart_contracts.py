@@ -458,6 +458,7 @@ def suite():
     suite.addTest(TestSmartContracts("test_delete_updated_contract"))
     suite.addTest(TestSmartContracts("test_delete_scheduled_contract"))
     suite.addTest(TestSmartContracts("test_delete_cron_contract"))
+    suite.addTest(TestSmartContracts("test_delete_contract_by_transaction_type"))
     suite.addTest(TestSmartContracts("smart_contract_clean_up"))
     return suite
 

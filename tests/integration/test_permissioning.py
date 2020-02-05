@@ -206,6 +206,15 @@ get_default_interchain_network = frozenset(
         "permission_type": "read",
     }.items()
 )
+publish_interchain_transaction = frozenset(
+    {
+        "fn": "publish_interchain_transaction",
+        "params": ("ethereum", "whatever", "0x0"),
+        "permission_name": "publish_interchain_transaction",
+        "permission_group": "interchains",
+        "permission_type": "create",
+    }.items()
+)
 create_bitcoin_transaction = frozenset(
     {
         "fn": "create_bitcoin_transaction",
@@ -417,6 +426,7 @@ all_client_functions = [
     get_interchain_network,
     delete_interchain_network,
     list_interchain_networks,
+    publish_interchain_transaction,
     # set_default_interchain_network,  L5 Only
     # get_default_interchain_network,  L5 Only
     create_bitcoin_transaction,

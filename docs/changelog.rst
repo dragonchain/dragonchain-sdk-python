@@ -9,6 +9,7 @@ Features:
   * Add support for publishing signed interchain transactions
 Development:
   * Fix tests for python 3.8.1
+  * Fix integration tests for redisearch update
   * Fix installation requirements for python 3.4 testing
   * Fix linting error with new bugbear version
   * Remove duplicate integration test and fix openfaas logs schema for newer openfaas versions

@@ -502,7 +502,7 @@ class TestTransactions(unittest.TestCase):
         expected_response = {
             "status": 400,
             "ok": False,
-            "response": {"error": {"type": "BAD_REQUEST", "details": "Syntax error at offset 7 near 'invalid'"}},
+            "response": {"error": {"type": "BAD_REQUEST", "details": "Syntax error at offset 7 near invalid"}},
         }
         self.assertEqual(response, expected_response)
 
