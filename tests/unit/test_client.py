@@ -673,6 +673,15 @@ class TestClientMethods(unittest.TestCase):
         self.assertRaises(TypeError, self.client.get_smart_contract_object, key=[])
         self.assertRaises(TypeError, self.client.get_smart_contract_object, key="MyKey", smart_contract_id=[])
 
+    def test_query_interchain_transactions_throws_type_error(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.assertRaises(TypeError, self.client.query_interchain_transactions, 123456789)
+
+    def test_query_interchain_transactions_calls_get_with_string(self, mock_creds, mock_request):
+        self.client = dragonchain_sdk.create_client()
+        self.client.query_interchain_transactions("123456789")
+        self.client.request.get.assert_called_once_with("/v1/verifications/interchains/123456789")
+
     @patch.dict(os.environ, {"SMART_CONTRACT_ID": "MyName"})
     def test_get_smart_contract_object_reads_env_and_calls_get(self, mock_creds, mock_request):
         self.client = dragonchain_sdk.create_client()

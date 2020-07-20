@@ -534,6 +534,22 @@ class Client(object):
             return self.request.get("/v1/verifications/{}?level={}".format(block_id, level))
         return self.request.get("/v1/verifications/{}".format(block_id))
 
+    def query_interchain_transactions(self, block_id: str) -> "request_response":
+        """Get all subsequent interchain broadcasts both including and after the L1 block ID
+
+        Args:
+          block_id (str): ID of the block to get verifications for
+
+        Raises:
+          TypeError: with bad parameter type
+
+        Returns:
+          Level 5 verifications
+        """
+        if not isinstance(block_id, str):
+            raise TypeError('Parameter "block_id" must be of type str.')
+        return self.request.get("/v1/verifications/interchains/{}".format(block_id))
+
     def get_api_key(self, key_id: str) -> "request_response":
         """Get information about an HMAC API key
 
